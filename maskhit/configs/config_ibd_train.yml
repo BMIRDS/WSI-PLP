@@ -1,0 +1,19 @@
+dataset:
+  meta_svs: !!str ../../SlidePreprocessing/for_vit/meta/IBD_PROJECT/svs_meta.pickle
+  meta_all: !!str ../../SlidePreprocessing/for_vit/meta/ibd_project_meta.pickle
+  outcome: !!str "Dx (U=UC, C=Cr, I=Ind)"
+  outcome_type: !!str classification
+  study: !!str ibd_project
+  is_cancer: !!bool False
+  disease: !!str IBD_PROJECT
+
+patch:
+  num_patches: !!int 0
+  magnification: !!int 5
+  wd: !!float 0.01
+
+model:
+  lr_attn: !!float 1e-5
+  lr_pred: !!float 1e-3
+  dropout: !!float 0.2
+  fold: !!int 0

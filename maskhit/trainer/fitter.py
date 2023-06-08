@@ -15,6 +15,7 @@ import shutil
 import math
 import pickle
 import numpy as np
+from utils.config import Config
 
 from maskhit.model.models import HybridModel
 from maskhit.trainer.losses import ContrasiveLoss
@@ -24,6 +25,7 @@ from maskhit.trainer.meters import AverageMeter, ProgressMeter
 from maskhit.trainer.metrics import ModelEvaluation, calculate_metrics
 from maskhit.trainer.logger import compose_logging
 from maskhit.trainer.earlystopping import EarlyStopping
+
 
 
 def format_results(res):
@@ -110,6 +112,7 @@ class HybridFitter:
         self,
         writer=None,
         args=None,
+        config_file = None,
         timestr='',
         num_classes=1,
         model_name='model',
@@ -118,6 +121,7 @@ class HybridFitter:
         loss_function=None,
     ):
         self.writer = writer
+        self.config = config_file
         self.args = args
         self.criterion = loss_function
         self.dataloaders = {}
@@ -125,7 +129,7 @@ class HybridFitter:
         self.timestr = timestr
         self.meta_ds = {}
         self.model_name = model_name
-        self.best_metric = -1e4 if args.outcome_type == 'mlm' else 0
+        self.best_metric = -1e4 if self.config.dataset.outcome_type == 'mlm' else 0
         self.checkpoints_folder = checkpoints_folder
         self.checkpoint_to_resume = checkpoint_to_resume
         self.num_classes = num_classes
@@ -195,7 +199,7 @@ class HybridFitter:
 
         group_var = 'id_svs' if self.args.sample_svs else 'id_patient'
 
-        if mode != 'train' and self.args.outcome_type != 'mlm':
+        if mode != 'train' and self.config.dataset.outcome_type != 'mlm':
             self.meta_df[mode] = _df
 
         elif self.args.sample_patient or self.args.sample_svs:
@@ -328,7 +332,7 @@ class HybridFitter:
         losses1 = AverageMeter('Loss 1', ':6.3f')
         losses2 = AverageMeter('Loss 2', ':6.3f')
 
-        if self.args.outcome_type == 'mlm':
+        if self.config.dataset.outcome_type == 'mlm':
             tracked_items = [batch_time, data_time, losses1, losses2, losses0]
         else:
             tracked_items = [batch_time, data_time, losses0, perfs]
@@ -340,7 +344,7 @@ class HybridFitter:
                                  verbose=True)
         end = time.time()
 
-        eval_t = ModelEvaluation(outcome_type=self.args.outcome_type,
+        eval_t = ModelEvaluation(outcome_type=self.config.dataset.outcome_type,
                                  loss_function=self.criterion,
                                  mode='train',
                                  device=self.device,
@@ -353,7 +357,7 @@ class HybridFitter:
         for i, sample in enumerate(self.dataloaders['train']):
             batch_inputs = unpack_sample(sample, regions_per_patient, svs_per_patient, self.device)
             targets = batch_inputs['targets']
-            if self.args.outcome_type == 'survival':
+            if self.config.dataset.outcome_type == 'survival':
                 if batch_inputs['targets'][:, 1].sum() == 0:
                     continue
 
@@ -375,7 +379,7 @@ class HybridFitter:
             loss.backward()
             self.optimizer.step()
 
-            if self.args.outcome_type == 'mlm':
+            if self.config.dataset.outcome_type == 'mlm':
                 pass
             else:
                 eval_t.update({
@@ -390,14 +394,14 @@ class HybridFitter:
             losses2.update(attn_loss_cls.item(), num_samples)
             losses0.update(loss.item(), num_samples)
 
-            if self.args.outcome_type == 'mlm':
+            if self.config.dataset.outcome_type == 'mlm':
                 metrics = {'loss': 0}
             else:
                 metrics = calculate_metrics(
                     ids=batch_inputs['ids_of_sample'].cpu().numpy(),
                     preds=preds.data.cpu().numpy(),
                     targets=targets.data.cpu().numpy(),
-                    outcome_type=self.args.outcome_type)
+                    outcome_type=self.config.dataset.outcome_type)
             perfs.update(metrics[self.metric], num_samples)
 
             # measure elapsed time
@@ -407,7 +411,7 @@ class HybridFitter:
             if (i + 1) % self.args.log_freq == 0:
                 progress.display(i + 1)
 
-        if self.args.outcome_type == 'mlm':
+        if self.config.dataset.outcome_type == 'mlm':
             res = {
                 'loss': losses0.get_avg(),
                 'loss_pt1': losses1.get_avg(),
@@ -430,7 +434,7 @@ class HybridFitter:
         self.model.eval()
         self.loss_fn.eval()
         # self.model.train()
-        eval_v = ModelEvaluation(outcome_type=self.args.outcome_type,
+        eval_v = ModelEvaluation(outcome_type=self.config.dataset.outcome_type,
                                  loss_function=self.criterion,
                                  mode='val',
                                  device=self.device,
@@ -451,7 +455,7 @@ class HybridFitter:
                 preds = outputs['out']
                 attn_loss_seq, attn_loss_cls = self.loss_fn(outputs)
 
-            if self.args.outcome_type == 'mlm':
+            if self.config.dataset.outcome_type == 'mlm':
                 counts += 1
                 loss = self.criterion.calculate(outputs['out'],
                                                 batch_inputs['targets'])
@@ -465,7 +469,7 @@ class HybridFitter:
                     "targets": batch_inputs['targets']
                 })
 
-        if self.args.outcome_type == 'mlm':
+        if self.config.dataset.outcome_type == 'mlm':
             res = {
                 'loss': losses0 / counts,
                 'loss_pt1': losses1 / counts,
@@ -498,13 +502,13 @@ class HybridFitter:
         # schedule step
         ########################################
 
-        if self.args.outcome_type == 'survival':
+        if self.config.dataset.outcome_type == 'survival':
             performance_measure = torch.tensor(val_res['c-index'])
-        elif self.args.outcome_type == 'classification':
+        elif self.config.dataset.outcome_type == 'classification':
             performance_measure = torch.tensor(val_res['auc'])
-        elif self.args.outcome_type == 'regression':
+        elif self.config.dataset.outcome_type == 'regression':
             performance_measure = torch.tensor(val_res['r2'])
-        elif self.args.outcome_type == 'mlm':
+        elif self.config.dataset.outcome_type == 'mlm':
             performance_measure = -torch.tensor(val_res['loss'])
         performance_measure = performance_measure.item()
 
@@ -581,7 +585,7 @@ class HybridFitter:
         epoch_output_path = os.path.join(checkpoints_folder, "LAST.pt")
 
         if os.path.isfile(
-                epoch_output_path) and self.args.outcome_type == 'mlm':
+                epoch_output_path) and self.config.dataset.outcome_type == 'mlm':
             shutil.copyfile(epoch_output_path,
                             epoch_output_path.replace('LAST.pt', 'LAST-1.pt'))
         torch.save(state_dict, epoch_output_path)
@@ -619,7 +623,7 @@ class HybridFitter:
             'regression': 'r2',
             'mlm': 'loss'
         }
-        self.metric = metrics[self.args.outcome_type]
+        self.metric = metrics[self.config.dataset.outcome_type]
 
         self.es = EarlyStopping(patience=self.args.patience, mode='max')
 
@@ -630,7 +634,7 @@ class HybridFitter:
                             dropout=self.args.dropout,
                             args=self.args,
                             model_name=self.model_name,
-                            outcome_type=self.args.outcome_type)
+                            outcome_type=self.config.dataset.outcome_type)
 
         if not torch.cuda.is_available():
             print('using CPU, this will be slow')
