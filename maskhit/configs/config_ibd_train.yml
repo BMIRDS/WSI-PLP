@@ -1,6 +1,6 @@
 dataset:
-  meta_svs: !!str ../../SlidePreprocessing/for_vit/meta/IBD_PROJECT/svs_meta.pickle
-  meta_all: !!str ../../SlidePreprocessing/for_vit/meta/ibd_project_meta.pickle
+  meta_svs: !!str ../../../SlidePreprocessing/for_vit/meta/IBD_PROJECT/svs_meta.pickle
+  meta_all: !!str ../../../SlidePreprocessing/for_vit/meta/ibd_project_meta.pickle
   outcome: !!str "Dx (U=UC, C=Cr, I=Ind)"
   outcome_type: !!str classification
   study: !!str ibd_project
@@ -13,7 +13,8 @@ patch:
   wd: !!float 0.01
 
 model:
-  lr_attn: !!float 1e-5
-  lr_pred: !!float 1e-3
+  weighted_loss: !!bool True
+  lr: !!float 1e-5
   dropout: !!float 0.2
+  batch_size: !!int 8
   fold: !!int 0

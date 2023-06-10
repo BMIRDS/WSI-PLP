@@ -56,10 +56,8 @@ if args.cancer == '.':
 if config.patch.wd is not None:
     args.wd_attn = args.wd_fuse = args.wd_pred = args.wd_loss = config.patch.wd
 
-if args.lr is not None:
-    config.model.lr_attn = args.lr_fuse = config.model.lr_pred = args.lr_loss = args.lr
-
-
+if hasattr(config.model, 'lr'):
+    args.lr_attn = args.lr_fuse = args.lr_pred = args.lr_loss = config.model.lr
 
 if args.resume_train:
     args.warmup_epochs = 0
@@ -134,10 +132,10 @@ args.mode_ops['train']['repeats_per_epoch'] = args.repeats_per_epoch
 args.mode_ops['val']['repeats_per_epoch'] = 1
 args.mode_ops['predict']['repeats_per_epoch'] = args.repeats_per_epoch
 
-args.mode_ops['train']['batch_size'] = max(args.batch_size,
+args.mode_ops['train']['batch_size'] = max(config.model.batch_size,
                                            args.svs_per_patient)
-args.mode_ops['val']['batch_size'] = max(args.batch_size, args.svs_per_patient)
-args.mode_ops['predict']['batch_size'] = max(args.batch_size,
+args.mode_ops['val']['batch_size'] = max(config.model.batch_size, args.svs_per_patient)
+args.mode_ops['predict']['batch_size'] = max(config.model.batch_size,
                                              args.svs_per_patient)
 
 if args.visualization:
@@ -354,11 +352,9 @@ def main():
         num_classes = len(df_train[config.dataset.outcome].unique().tolist())
     else:
         num_classes = 1
-    
-    print("NUM CLASSES: " + str(num_classes))
 
     print('num_classes = ', num_classes)
-    if args.weighted_loss:
+    if config.model.weighted_loss:
         weight = df_train.shape[0] / df_train[
             config.dataset.outcome].value_counts().sort_index()
         print('weight is: ', weight)
@@ -400,3 +396,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    

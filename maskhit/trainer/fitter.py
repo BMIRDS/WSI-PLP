@@ -610,7 +610,7 @@ class HybridFitter:
         for arg, value in sorted(vars(self.args).items()):
             self.writer['meta'].info("Argument %s: %r", arg, value)
 
-    def fit(self, data_dict, procedure='train'):
+    def fit(self, data_dict, procedure='train'):     
         if torch.cuda.is_available():
             self.device = torch.device('cuda:0')
         else:
@@ -631,7 +631,7 @@ class HybridFitter:
 
         model = HybridModel(in_dim=self.args.num_features,
                             out_dim=self.num_classes,
-                            dropout=self.args.dropout,
+                            dropout=self.config.model.dropout,
                             args=self.args,
                             model_name=self.model_name,
                             outcome_type=self.config.dataset.outcome_type)
