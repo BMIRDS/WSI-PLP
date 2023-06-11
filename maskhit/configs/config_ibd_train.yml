@@ -16,5 +16,5 @@ model:
   weighted_loss: !!bool True
   lr: !!float 1e-5
   dropout: !!float 0.2
-  batch_size: !!int 8
+  batch_size: !!int 16
   fold: !!int 0
