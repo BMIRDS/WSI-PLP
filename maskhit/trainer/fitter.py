@@ -202,7 +202,7 @@ class HybridFitter:
         if mode != 'train' and self.config.dataset.outcome_type != 'mlm':
             self.meta_df[mode] = _df
 
-        elif self.args.sample_patient or self.args.sample_svs:
+        elif self.config.model.sample_patient or self.args.sample_svs:
             res = []
             for r_i in range(repeats_per_epoch):
                 # random sample n svs for each patient during each iteration
@@ -606,7 +606,7 @@ class HybridFitter:
         self.writer = compose_logging(file_mode,
                                       self.model_name,
                                       to_console=True,
-                                      override=self.args.override_logs)
+                                      override=self.config.model.override_logs)
         for arg, value in sorted(vars(self.args).items()):
             self.writer['meta'].info("Argument %s: %r", arg, value)
 

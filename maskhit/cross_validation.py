@@ -26,15 +26,10 @@ def batch_train():
         args = [
             'python train.py',
             '--user-config-file', f'{config_file}',
-            '--outcome-type=classification',
-            '--sample-patient',
-            '-b=4',
-            '--override-logs',
             f'--timestr={timestr}'
         ]
         
-        new_cmd = ' '.join(args + [f'--fold={i} --study={study} --timestr={timestr}'])
-        print(new_cmd)
+        new_cmd = ' '.join(args + [f'--fold={i}'])
         return_code = os.system(new_cmd)
         if return_code:
             return return_code

@@ -18,3 +18,5 @@ model:
   dropout: !!float 0.2
   batch_size: !!int 16
   fold: !!int 0
+  override_logs: !!bool True
+  sample_patient: !!bool True
