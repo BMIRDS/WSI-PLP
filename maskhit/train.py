@@ -7,7 +7,7 @@ REQUIRED OPTIONS:
 
 EXAMPLES:
 - For IBD project
-python train.py --user-config-file configs/config_ibd_train.yml --sample-patient -b=4 --override-logs --timestr=2023_5_30 --fold=0
+python train.py --user-config-file configs/config_ibd_train.yml --default-config-file configs/config_default.yaml  --timestr=2023_5_30 --fold=0
 """
 
 import os
@@ -21,6 +21,7 @@ from maskhit.trainer.fitter import HybridFitter
 from maskhit.trainer.losses import FlexLoss
 from options.train_options import TrainOptions
 from utils.config import Config
+
 
 print("\n")
 opt = TrainOptions()
@@ -40,7 +41,8 @@ args = opt.parse()
 print(f"args: {args}")
 
 # args_config = default_options()
-config = Config(args.user_config_file)
+config = Config(args.default_config_file,
+                args.user_config_file)
 
 print(f"TEST: {config.dataset.meta_svs}")
 
