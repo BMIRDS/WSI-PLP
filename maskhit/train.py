@@ -14,6 +14,7 @@ import os
 import time
 import ast
 import pandas as pd
+import torch
 import sys
 import glob
 import socket
@@ -22,6 +23,14 @@ from maskhit.trainer.losses import FlexLoss
 from options.train_options import TrainOptions
 from utils.config import Config
 
+# Defining a global variable to store available device
+global device
+
+# checking to see if GPU is available for use
+if torch.cuda.is_available():
+    device = torch.device("cuda:0")
+else:
+    device = torch.device("cpu")
 
 print("\n")
 opt = TrainOptions()

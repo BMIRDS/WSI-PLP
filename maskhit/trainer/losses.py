@@ -120,13 +120,14 @@ def log_parlik_loss_cox(scores, times=None, events=None):
 class FlexLoss:
 
     def __init__(self, outcome_type, weight=None):
+        from maskhit.train import device # avoids circular import
         assert outcome_type in [
             'survival', 'classification', 'regression', 'mlm'
         ]
         if outcome_type == 'survival':
             self.criterion = log_parlik_loss_cox
         elif outcome_type == 'classification' or outcome_type == 'mlm':
-            weight_tensor = torch.tensor(weight).to("cuda:0").float()
+            weight_tensor = torch.tensor(weight).to(device).float()
             self.criterion = nn.CrossEntropyLoss(weight=weight_tensor)
         else:
             self.criterion = nn.MSELoss()
