@@ -1,9 +1,9 @@
 '''
 Use this script to run 5 fold cross-validation
-CUDA_VISIBLE_DEVICES=5 python cross_validation.py ibd_project 2023_5_30 configs/config_ibd_train.yml
 
-
-CUDA_VISIBLE_DEVICES=5 python cross_validation.py ibd_project 2023_5_30 configs/config_ibd_train.yml configs/config_default.yaml
+Example Usage: CUDA_VISIBLE_DEVICES=5 python cross_validation.py --study-name "ibd_project" 
+            --timestr-model "2023_5_30" --user-config-file "configs/config_ibd_train.yml" 
+            --default-config-file "configs/config_default.yaml"
 '''
 
 import sys
@@ -13,10 +13,34 @@ from maskhit.trainer.losses import FlexLoss
 from options.train_options import TrainOptions
 from utils.config import Config
 
-study = sys.argv[1]
-timestr = sys.argv[2]
-config_file = sys.argv[3]
-config_file_default = sys.argv[4]
+opt = TrainOptions()
+opt.initialize()
+
+opt.parser.add_argument(
+        "--study-name", 
+        type=str,
+        help="name of the project.")
+opt.parser.add_argument(
+        "--timestr-model", 
+        type=str,
+        help="date and time of model training")
+opt.parser.add_argument(
+        "--default-config-file", 
+        type=str,
+        default='configs/config_default.yaml',
+        help="Path to the base configuration file. Defaults to 'config.yaml'.")
+opt.parser.add_argument(
+        "--user-config-file", 
+        type=str,
+        help="Path to the user-defined configuration file.")
+
+args = opt.parse()
+print(f"timestr: {args.study_name}")
+
+study = args.study_name
+timestr = args.timestr_model
+config_file = args.user_config_file
+config_file_default = args.default_config_file
 
 # args_config = default_options()
 print(f"config_file: {config_file}")
@@ -27,7 +51,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # model training
 def batch_train():
-    for i in range(1):
+    for i in range(5):
         args = [
             'python train.py',
             '--user-config-file', f'{config_file}',
