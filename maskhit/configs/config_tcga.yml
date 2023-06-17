@@ -1,0 +1,18 @@
+# USAGE w/ train.py: python train.py --user-config-file configs/config_tcga.yml --default-config-file configs/config_default.yaml  
+# --timestr=20230120_120000 --cancer=TCGA_COAD --mil1=vit_h8l12 --mil2=ap 
+# --lr-attn=1e-5 --lr-pred=1e-3 --ffpe-only --resume=pretrained_20221013_201713 --resume-epoch=0500 --resume-fuzzy 
+
+dataset:
+  study: !!str colon
+  meta_svs: !!str meta/vis_tcga_brca_locs-split.pickle
+  meta_all: !!str meta/vis_tcga_brca_meta-split.pickle 
+  outcome: !!str status
+  outcome_type: !!str survival
+  is_cancer: !!bool True
+
+patch:
+  magnification: !!int 10
+  wd: !!float 0.01
+
+model:
+  batch_size: !!int 64
