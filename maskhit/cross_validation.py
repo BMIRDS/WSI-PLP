@@ -51,7 +51,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # model training
 def batch_train():
-    for i in range(5):
+    for i in range(config.dataset.num_folds):
         args = [
             'python train.py',
             '--user-config-file', f'{config_file}',

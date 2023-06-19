@@ -37,6 +37,9 @@ dataset:
   # title of project/disease name
   disease: !!str <SET_YOUR_OWN_VALUE>
 
+  # number of folds experiment uses
+  num_folds: !!int 5
+
 patch:
   ## Patch configuration
 
