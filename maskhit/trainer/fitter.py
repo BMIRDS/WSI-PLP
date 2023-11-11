@@ -22,7 +22,7 @@ from maskhit.trainer.losses import ContrasiveLoss
 from maskhit.trainer.slidedataset import SlidesDataset
 from maskhit.trainer.transforms import get_data_transforms
 from maskhit.trainer.meters import AverageMeter, ProgressMeter
-from maskhit.trainer.metrics import ModelEvaluation, calculate_metrics
+from maskhit.trainer.metrics import ModelEvaluation, calculate_metrics, analyze_predictions
 from maskhit.trainer.logger import compose_logging
 from maskhit.trainer.earlystopping import EarlyStopping
 
@@ -43,6 +43,7 @@ def format_results(res):
 def unpack_sample(sample, regions_per_patient, svs_per_patient, device):
     imgs, ids, targets, pos, pos_tile, tiles, pct_valid = list(
         map(lambda x: sample[x], [0, 1, 2, 3, 4, 5, 6]))
+    
     imgs, ids, targets, pos, pos_tile, tiles, pct_valid = \
         imgs.to(device, non_blocking=True), \
         ids.to(device, non_blocking=True), \
@@ -208,6 +209,10 @@ class HybridFitter:
 
         if mode != 'train' and self.config.dataset.outcome_type != 'mlm':
             self.meta_df[mode] = _df
+            print("IN PREPARE_DATASETS")
+            print(self.meta_df[mode])
+            self.meta_df[mode].to_csv('tanmay.csv')
+
 
         elif self.config.model.sample_patient or self.args.sample_svs:
             res = []
@@ -236,6 +241,10 @@ class HybridFitter:
 
     def get_datasets(self, pickle_file, mode='train'):
         transform = get_data_transforms()[mode]
+
+        print(pickle_file.keys())
+        
+
         ds = SlidesDataset(data_file=pickle_file,
                            outcomes=self.args.outcomes,
                            writer=self.writer,
@@ -326,6 +335,8 @@ class HybridFitter:
         # for accumulating gradients
         if hasattr(self.config.model, 'accumulation_steps'):
             accumulation_steps = self.config.model.accumulation_steps
+        
+        print(f"Total Accumulation Steps: {accumulation_steps}")
         
         regions_per_patient = self.args.mode_ops['train']['regions_per_patient']
         svs_per_patient = self.args.mode_ops['train']['svs_per_patient']
@@ -442,7 +453,8 @@ class HybridFitter:
         res['mode'] = 'train'
         return res
 
-    def evaluate(self, df_val, epoch=0):
+    def evaluate(self, df_val, epoch=0, mode = ''):
+
         regions_per_patient = self.args.mode_ops['val']['regions_per_patient']
         svs_per_patient = self.args.mode_ops['val']['svs_per_patient']
 
@@ -482,6 +494,8 @@ class HybridFitter:
                 losses1 += attn_loss_seq.mean().item()
                 losses2 += attn_loss_cls.mean().item()
             else:
+                # print("AMIT SAMPLE")
+                # print(batch_inputs['ids'].view(-1, 1))
                 eval_v.update({
                     "ids": batch_inputs['ids'].view(-1, 1),
                     "preds": preds,
@@ -495,7 +509,8 @@ class HybridFitter:
                 'loss_pt2': losses2 / counts
             }
         else:
-            res = eval_v.evaluate()
+            res = eval_v.evaluate(mode)
+            # print("SAVING IN PRED FILES")
             pred_file = f"predictions/{self.model_name}-predictions.csv"
             os.makedirs(os.path.dirname(pred_file), exist_ok=True)
             eval_v.save(pred_file)
@@ -517,7 +532,7 @@ class HybridFitter:
             self.scheduler.step()
 
         train_res = self.train(data_dict['train'], epoch=epoch)
-        val_res = self.evaluate(data_dict['val'], epoch=epoch)
+        val_res = self.evaluate(data_dict['val'], epoch=epoch, mode = 'test')
 
         self.writer['data'].info(format_results(train_res))
         self.writer['data'].info(format_results(val_res))
@@ -529,7 +544,7 @@ class HybridFitter:
         if self.config.dataset.outcome_type == 'survival':
             performance_measure = torch.tensor(val_res['c-index'])
         elif self.config.dataset.outcome_type == 'classification':
-            performance_measure = torch.tensor(val_res['auc'])
+            performance_measure = torch.tensor(val_res['f1']) # changed from 'auc' to 'f1-score'
         elif self.config.dataset.outcome_type == 'regression':
             performance_measure = torch.tensor(val_res['r2'])
         elif self.config.dataset.outcome_type == 'mlm':
@@ -539,7 +554,7 @@ class HybridFitter:
         self.scheduler.step()
 
         is_best = False
-        epoch_start_monitoring = 0
+        epoch_start_monitoring = 5 # changed from 0 to 5
         if performance_measure > self.best_metric and epoch >= epoch_start_monitoring:
             self.best_metric = performance_measure
             is_best = True
@@ -565,16 +580,19 @@ class HybridFitter:
         self.prepare_datasets(df_val, 'predict')
         self.get_datasets(self.meta_df['predict'], 'predict')
 
+
+
         # validation phase
         self.model.eval()
         self.loss_fn.eval()
 
         # forward prop over all validation data
-        counts = 0
         for i, sample in enumerate(tqdm.tqdm(self.dataloaders['predict'])):
+            print(f"At index: {i}")
+            print(f"regions_per_patient: {regions_per_patient}")
+            print(f"svs_per_patient: {svs_per_patient}")
             batch_inputs = unpack_sample(sample, regions_per_patient, svs_per_patient, self.device)
 
-            # forward
             with torch.set_grad_enabled(False):
                 outputs= self.model(batch_inputs)
 
@@ -675,6 +693,7 @@ class HybridFitter:
             model = _CustomDataParallel(model).cuda()
             self.loss_fn.cuda()
 
+        print("Called in fit after model initialization")
         self.model = model
         self.reset_optimizer()
         self.resume_checkpoint()
@@ -685,23 +704,32 @@ class HybridFitter:
                 if return_code:
                     break
         elif procedure == 'test':
-            res = []
-            for i in range(self.args.num_repeats):
-                info_str = self.evaluate(data_dict['val'], epoch=0)
-                self.writer['meta'].info(info_str)
-                res.append(info_str)
+            if self.args.analyze_predictions:
+                analyze_predictions()
+            else:
+                res = []
+                print("HERE")
+                for i in range(self.args.num_repeats):
+                    info_str = self.evaluate(data_dict['val'], epoch=0, mode = 'test')
+                    self.writer['meta'].info(info_str)
+                    res.append(info_str)
 
-            df_sum = pd.DataFrame(res)
-            df_sum.drop(['mode'], axis=1, inplace=True)
-            self.writer['meta'].info("Average prediction")
-            self.writer['meta'].info(df_sum.mean().to_dict())
-            self.writer['meta'].info("Standard deviation")
-            self.writer['meta'].info(df_sum.std().to_dict())
-            self.writer['data'].info(df_sum.to_csv())
+                df_sum = pd.DataFrame(res)
+                df_sum.drop(['mode'], axis=1, inplace=True)
+                self.writer['meta'].info("Average prediction")
+                self.writer['meta'].info(df_sum.mean().to_dict())
+                self.writer['meta'].info("Standard deviation")
+                self.writer['meta'].info(df_sum.std().to_dict())
+                self.writer['data'].info(df_sum.to_csv())
 
         elif procedure == 'extract':
+            print("Called in the extract mode")
             save_loc = f"features/{self.args.vis_spec}/{self.args.cancer}/{self.epoch:04d}/meta.pickle"
+            print(f"save_loc: {save_loc}")
             os.makedirs(os.path.dirname(save_loc), exist_ok=True)
             data_dict['val'].to_pickle(save_loc)
             print('=' * 30)
+            print("Prining the data_dict[val] keys")
+            print(data_dict['val'].keys())
             self.extract_features(data_dict['val'])
+

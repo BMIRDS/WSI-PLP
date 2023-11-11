@@ -11,7 +11,7 @@ parser.add_argument('--meta-svs',
                     help='svs meta file')
 parser.add_argument('--magnification',
                     type=int,
-                    default=10,
+                    default=20,
                     help='magnification level')
 parser.add_argument('--patch-size',
                     type=int,
@@ -19,18 +19,19 @@ parser.add_argument('--patch-size',
                     help='patch size')
 parser.add_argument('--region-size',
                     type=int,
-                    default=4480,
+                    default=2240,
                     help='region size')
 parser.add_argument('--sampling-threshold',
                     type=int,
-                    default=100,
+                    default=10,
                     help='sampling threshold')
 parser.add_argument('--grid-size',
                     type=int,
-                    default=10,
+                    default=10, 
                     help='grid size. Unit: patches')
 
 args = parser.parse_args()
+
 
 
 magnification = args.magnification
@@ -47,8 +48,9 @@ df_svs = pd.read_pickle(args.meta_svs)
 
 counts = []
 for i, row in tqdm.tqdm(df_svs.iterrows(), total=df_svs.shape[0]):
+    print(row)
     df_i = pd.read_pickle(
-        f"data/{row['cancer']}/{row['id_svs']}/mag_{magnification}-size_{patch_size}/meta.pickle"
+        f"data/IBD_PROJECT/{row['id_svs']}/mag_{magnification}-size_{patch_size}/meta.pickle"
     )
     n_regions = df_i.loc[
         (df_i.pos_x % grid_size == 0) & (df_i.pos_y % grid_size == 0) &

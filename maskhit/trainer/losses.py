@@ -127,8 +127,11 @@ class FlexLoss:
         if outcome_type == 'survival':
             self.criterion = log_parlik_loss_cox
         elif outcome_type == 'classification' or outcome_type == 'mlm':
-            weight_tensor = torch.tensor(weight).to(device).float()
-            self.criterion = nn.CrossEntropyLoss(weight=weight_tensor)
+            if weight is not None and not weight.empty:
+                weight_tensor = torch.tensor(weight).to(device).float()
+                self.criterion = nn.CrossEntropyLoss(weight=weight_tensor)
+            else: 
+                self.criterion = nn.CrossEntropyLoss()
         else:
             self.criterion = nn.MSELoss()
         self.outcome_type = outcome_type

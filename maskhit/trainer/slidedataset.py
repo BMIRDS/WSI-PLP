@@ -72,6 +72,7 @@ class SlidesDataset(Dataset):
         self.files = self.df['id_svs'].tolist()
         self.folders = self.df['folder'].tolist()
         if args.visualization:
+            print(self.df.keys())
             self.locs = self.df['pos'].tolist()
         else:
             self.locs = [None for _ in range(self.df.shape[0])]
@@ -109,6 +110,8 @@ class SlidesDataset(Dataset):
                             weighted_sample=False,
                             loc=loc)
         output['is_valid'] = output['fids'] > -1
+        # print("Printing output['is_valid'] in _get_patch_meta of SlideDataset class")
+        # print(output['fids'])
         return output
 
     def sample_features(self, folder, svs_identifier, loc):

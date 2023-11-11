@@ -66,13 +66,13 @@ model:
 
   # Batch size for processing slide patches
   batch_size: !!int 16
-
-  # which fold to use after kfold cross validation
-  fold: !!int 0
   
   # determines whether old logs should stay
   override_logs: !!bool True
 
+  # number of svs sampled in sample-patient mode
+  regions_per_svs: !!int 64
+  
   # TBD
   sample_patient: !!bool True
 

@@ -77,7 +77,7 @@ class TrainOptions(BaseOptions):
                                  help='magnification')
         self.parser.add_argument('--patch-size',
                                  type=int,
-                                 default=224,
+                                 default=224, # 224 for 20 mag
                                  help='size of patch')
         self.parser.add_argument('--use-patches',
                                  action='store_true',
@@ -97,7 +97,7 @@ class TrainOptions(BaseOptions):
                                  help='exclude ffpe slides')
         self.parser.add_argument('--regions-per-svs',
                                  type=int,
-                                 default=1,
+                                 default=185,
                                  help='number of svs sampled in sample-patient mode')
         self.parser.add_argument('--regions-per-svs-val',
                                  type=int,
@@ -115,18 +115,18 @@ class TrainOptions(BaseOptions):
                                  help='name of the outcome variable')
         self.parser.add_argument('--outcome-type',
                                  type=str,
-                                 default='survival',
+                                 default='classification', # changed from survival
                                  help='outcome type, choose from \
                                 "survival", "classification", "regression", "mlm"')
         self.parser.add_argument('--weighted-loss',
                                  action='store_true',
-                                 default=False,
+                                 default=True,
                                  help="HASN'T TESTED: whether to use a weighted loss function for imbalanced classification")
 
         # sample selection
         self.parser.add_argument('--region-size',
                                  type=int,
-                                 default=4480,
+                                 default=2240, # try reducing by half or 1/4 original: 4480
                                  help='size of tile region sampled from svs, \
                                      if none then sample from entire svs. \
                                      Unit: pixels')
@@ -146,7 +146,7 @@ class TrainOptions(BaseOptions):
                                 whole slide image sequentially')
         self.parser.add_argument('--sampling-threshold',
                                  type=int,
-                                 default=100,
+                                 default=10, # original 10
                                  help='threshold when selecting tiles')
         self.parser.add_argument('--svs-per-patient',
                                  type=int,
@@ -154,7 +154,7 @@ class TrainOptions(BaseOptions):
                                  help='how many svs to select from one sample during each iteration')
         self.parser.add_argument('--repeats-per-epoch',
                                  type=int,
-                                 default=4,
+                                 default=4, 
                                  help='how many times to select one sample during each epoch')
         self.parser.add_argument('--sample-patient',
                                  action='store_true',
@@ -162,11 +162,11 @@ class TrainOptions(BaseOptions):
                                  help='sample by patient')
         self.parser.add_argument('--sample-svs',
                                  action='store_true',
-                                 default=False,
+                                 default=False, # changed from False
                                  help='sample by svs')
         self.parser.add_argument('--grid-size',
                                  type=int,
-                                 default=10,
+                                 default=10, # original 10
                                  help='grid size for sampling regions from whole slide. Unit: patches')
 
 
@@ -174,7 +174,7 @@ class TrainOptions(BaseOptions):
         # vit model specific parameters
         self.parser.add_argument('--avg-cls',
                                  action='store_true',
-                                 default=False,
+                                 default=True, # changed from False to True
                                  help='average the sequence encoding to obtain cls')
         self.parser.add_argument('--hidden-dim',
                                  type=int,
@@ -211,19 +211,19 @@ class TrainOptions(BaseOptions):
                                  help='total number of epochs to train the model')
         self.parser.add_argument('--warmup-epochs',
                                  type=int,
-                                 default=0,
+                                 default=5, # changed from 0 to 5
                                  help='total number of epochs to train the model')
         self.parser.add_argument('--patience',
                                  type=int,
-                                 default=5,
+                                 default=10, # changed from 5 to 10
                                  help='break the training after how number of epochs of no improvement')
         self.parser.add_argument('--anneal-freq',
                                  type=int,
-                                 default=50,
+                                 default=15, # changed from 50 to 10
                                  help='CosineAnnealingWarmRestarts: anneal frequency')
         self.parser.add_argument('--t-mult',
                                  type=int,
-                                 default=2,
+                                 default=1, # doublecheck settings
                                  help='CosineAnnealingWarmRestarts: A factor increases Ti after a restart')
 
         # specify optimizer
@@ -237,7 +237,7 @@ class TrainOptions(BaseOptions):
                                  help='learning rate for the attn part')
         self.parser.add_argument('--lr-pred',
                                  type=float,
-                                 default=1e-5,
+                                 default=0, # changed from 1e-3 (we can try 2.5e-3 to get to know if model is able to learn)
                                  help='learning rate for the pred part')
         self.parser.add_argument('--lr-loss',
                                  type=float,
@@ -259,7 +259,7 @@ class TrainOptions(BaseOptions):
                                  help='intensity of the weight decay for the attn model')
         self.parser.add_argument('--wd-pred',
                                  type=float,
-                                 default=1e-5,
+                                 default=0,
                                  help='intensity of the weight decay for the pred model')
         self.parser.add_argument('--wd-loss',
                                  type=float,
@@ -298,11 +298,11 @@ class TrainOptions(BaseOptions):
         # resume from checkpoint
         self.parser.add_argument('--resume',
                                  type=str,
-                                 default='',
+                                 default='pretrained_10x_224_resnet18', # FIX: changed from pretrained_20x_448_resnet34
                                  help='name of the model to be resumed')
         self.parser.add_argument('--resume-epoch',
                                  type=str,
-                                 default='LAST',
+                                 default='0500',
                                  help='epoch of the model to be resumed')
         self.parser.add_argument('--resume-train',
                                  action='store_true',
@@ -316,7 +316,7 @@ class TrainOptions(BaseOptions):
                                  help='If true then resume the previous optim scheduler')
         self.parser.add_argument('--resume-fuzzy',
                                  action='store_true',
-                                 default=False,
+                                 default=True,
                                  help='turn off strict mode')
 
         # patch region masking
@@ -326,7 +326,7 @@ class TrainOptions(BaseOptions):
                                  help='mask probability in BERT')
         self.parser.add_argument('--prop-mask',
                                  type=str,
-                                 default='0,1,0',
+                                 default='0, 1, 0',
                                  help='proportion for masking tokens, masked:original:random')
         self.parser.add_argument('--block-min',
                                  type=int,

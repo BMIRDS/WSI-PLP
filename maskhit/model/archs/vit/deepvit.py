@@ -31,9 +31,20 @@ def get_attention_map(attn_map):
     v = joint_attentions[-1]
     return v.detach()
 
+
 def get_attention_map_multi(attn_maps):
-    return torch.stack(
-        [get_attention_map(attn_maps[:, x]) for x in range(attn_maps.size(1))])
+    if attn_maps.size(1) == 0:
+        print("EMPTY")
+    
+    results = []
+    print(attn_maps.size(1))
+    for x in range(attn_maps.size(1)):
+        attn_map = get_attention_map(attn_maps[:, x])
+        results.append(attn_map)
+
+    print(torch.stack(results).size())
+    return torch.stack(results)
+
 
 
 class Residual(nn.Module):
@@ -204,11 +215,13 @@ class Transformer(nn.Module):
                     [self.args.vis_layer, :,
                      self.args.vis_head, :, :].cpu().unsqueeze(0).unsqueeze(2))
 
+
             output = {
                 'out': x['out'],
                 'attn': attn_map.cpu(),
                 'dots': None
             }
+
         else:
             output = {'out': x['out'], 'attn': None, 'dots': None}
         return output

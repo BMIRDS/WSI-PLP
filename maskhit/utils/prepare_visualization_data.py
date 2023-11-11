@@ -11,8 +11,12 @@ df_svs = pd.read_pickle('meta/ibd_project_svs.pickle')
 
 # slides to select for visualization, if empty all slides selected
 sel_ids = [
-    '10SP1900156 D1-1_SS12253_223800', # UC WSI
-    '10SP1900476 A2-1_SS12253_214443' # Cr WSI
+    '10SP1919976 A1-1_SS12253_183313', # HCTP for Cr
+    '10SP1919976 B1-1_SS12253_183037', # HCTP for Cr
+    '10SP1904090 C1-1_SS12253_011833', # HCFP for UC
+    '10SP1906551 B1-1_SS12253_012834', # HCFP for UC
+    '10SP1903499 F1-1_SS12253_220812', # HCTP for Cr
+    '10SP1911646 J1-1_SS12253_204104' # HCTP for Cr
 ]
 
 df_svs = df_svs.loc[df_svs.id_svs.isin(sel_ids)]

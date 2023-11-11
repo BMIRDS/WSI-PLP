@@ -2,9 +2,10 @@ import pandas as pd
 import numpy as np
 import torch
 from lifelines.utils import concordance_index
-from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.metrics import roc_auc_score, f1_score, confusion_matrix, roc_curve, auc
 from scipy.special import softmax
-
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 def c_index(times, scores, events):
     try:
@@ -32,8 +33,51 @@ def xyear_auc(preds, times, events, cutpoint=5):
 def find_confident_instance(preds):
     return preds[preds.max(1).argmax()]
 
+def read_and_adjust_csv(file_name, last_max_id):
+    df = pd.read_csv(file_name)
 
-def calculate_metrics(ids, preds, targets, outcome_type='survival'):
+    # Adjust the ids
+    df.iloc[:, 1] += last_max_id + 1
+    
+    # Extract the required columns into numpy arrays
+    id_array = df.iloc[:, 1].values.reshape(-1, 1)
+    preds_array = df.iloc[:, 2:4].values
+    targets_array = df.iloc[:, 4].values.reshape(-1, 1)
+
+    return id_array, preds_array, targets_array
+
+def analyze_predictions():
+    print("Congrats")
+
+    # List of files
+    num_files = 5
+    base_path = 'predictions/ibd_project/2023_5_30-val-'
+    files = [f"{base_path}{i}-predictions.csv" for i in range(num_files)]
+    
+    # Initialize containers for aggregated data
+    agg_ids = np.array([]).reshape(-1, 1)
+    agg_preds = np.array([]).reshape(-1, 2)
+    agg_targets = np.array([]).reshape(-1, 1)
+
+    # Initialize last maximum id
+    last_max_id = -1
+
+    for file in files:
+        ids, preds, targets = read_and_adjust_csv(file, last_max_id)
+        
+        # Update the last_max_id for the next iteration
+        last_max_id = np.max(ids)
+        
+        # Aggregate data
+        agg_ids = np.vstack([agg_ids, ids])
+        agg_preds = np.vstack([agg_preds, preds])
+        agg_targets = np.vstack([agg_targets, targets])
+
+    res = calculate_metrics(agg_ids, agg_preds, agg_targets, outcome_type='classification', mode='test')
+    print(res)
+
+
+def calculate_metrics(ids, preds, targets, outcome_type='survival', mode = ''):
 
     if outcome_type == 'survival':
         df = pd.DataFrame(np.concatenate([ids, targets, preds], axis=1))
@@ -53,35 +97,79 @@ def calculate_metrics(ids, preds, targets, outcome_type='survival'):
         return res
 
     elif outcome_type == 'classification':
-        df = pd.DataFrame(
-            np.concatenate([ids, targets, softmax(preds, axis=1)], axis=1))
+        df = pd.DataFrame(np.concatenate([ids, targets, softmax(preds, axis=1)], axis=1))
         targets = df.iloc[:, :2].groupby(0).mean().to_numpy().astype(int)
-        preds = df.groupby(0).apply(
-            lambda x: find_confident_instance(x.to_numpy()[:, 2:]))
+        preds = df.groupby(0).apply(lambda x: find_confident_instance(x.to_numpy()[:, 2:]))
         preds = np.stack(preds.to_list())
         f1 = f1_score(targets, preds.argmax(axis=1), average='weighted')
 
         if len(np.unique(targets)) != preds.shape[1]:
-            auc = 0.5
+            auc_score = 0.5
         else:
             try:
                 if preds.shape[1] > 2:
                     # multi-class
-                    auc = roc_auc_score(targets.reshape(-1),
+                    auc_score = roc_auc_score(targets.reshape(-1),
                                         torch.softmax(torch.tensor(preds),
                                                       dim=1),
                                         multi_class='ovr')
                 else:
                     # binary
-                    auc = roc_auc_score(
+                    auc_score = roc_auc_score(
                         targets.reshape(-1),
                         torch.softmax(torch.tensor(preds), dim=1)[:, 1])
+
+                    if mode == 'test':
+                        # Calculate the FPR and TPR for all thresholds
+                        fpr, tpr, threshold = roc_curve(targets.reshape(-1), torch.softmax(torch.tensor(preds), dim=1)[:, 1])
+
+                        # Calculate the AUC (Area under the ROC Curve)
+                        roc_auc = auc(fpr, tpr)
+
+                        plt.title('Receiver Operating Characteristic')
+                        plt.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
+                        plt.legend(loc = 'lower right')
+                        plt.plot([0, 1], [0, 1],'r--')
+                        plt.xlim([0, 1])
+                        plt.ylim([0, 1])
+                        plt.ylabel('True Positive Rate')
+                        plt.xlabel('False Positive Rate')
+                        plt.savefig('auc_plot.png')
+                        plt.clf()  # Clear the current figure
+
             except Exception as e:
                 print(e)
-                auc = 0.5
-        res = {'f1': f1, 'auc': auc}
+                auc_score = 0.5
+
+        # Added confusion matrix calculation
+        cm = confusion_matrix(targets, preds.argmax(axis=1))
+        res = {'f1': f1, 'auc': auc_score}
+
+        # show_confusion_matrix(cm)
 
         return res
+
+def show_confusion_matrix(cm, save_path='confusion_matrix.png'):
+    num_classes = cm.shape[0]  # Get the number of classes from the confusion matrix
+    classes = [str(i) for i in range(num_classes)]  # Generate class labels based on the number of classes
+
+    df_cm = pd.DataFrame(
+        cm, 
+        index=classes,
+        columns=classes
+    )
+    
+    # Plot the heatmap
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(df_cm, annot=True, fmt="g", cmap="Blues")
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    
+    # Save to a file if save_path is provided
+    plt.savefig(save_path, bbox_inches='tight')
+    plt.close()
+    # print(f"Saved confusion matrix to {save_path}")
+
 
 
 class ModelEvaluation(object):
@@ -115,11 +203,22 @@ class ModelEvaluation(object):
                 self.data[k] = np.concatenate(
                     [self.data[k], v.data.cpu().numpy()])
 
-    def evaluate(self):
+    def evaluate(self, mode = ''):
+
+        # print("id")
+        # print(type(self.data['ids']))
+        # print(self.data['ids'])
+        # print("preds")
+        # print(type(self.data['preds']))
+        # print(self.data['preds'])
+        # print("targets")
+        # print(type(self.data['targets']))
+        # print(self.data['targets'])
+
         metrics = calculate_metrics(self.data['ids'],
                                     self.data['preds'],
                                     self.data['targets'],
-                                    outcome_type=self.outcome_type)
+                                    outcome_type=self.outcome_type, mode = mode)
 
         loss_epoch = self.criterion.calculate(
             torch.tensor(self.data['preds']).to(self.device),
@@ -132,9 +231,12 @@ class ModelEvaluation(object):
     def save(self, filename):
         values = []
         for k, v in self.data.items():
+            # print(k, v)
             values.append(v)
         df = pd.DataFrame(np.concatenate(values, 1))
         if filename is None:
             return df
         else:
             df.to_csv(filename)
+            # print("FILENAME")
+            # print(filename)

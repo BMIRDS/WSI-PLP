@@ -11,8 +11,11 @@ study = sys.argv[1]
 timestr = sys.argv[2]
 timestr_new = sys.argv[3]
 
+print(f"{study}, {timestr}, {timestr_new}")
+
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 files = glob.glob(f'logs/{study}/{timestr}-*.log')
+# files = glob.glob(f'logs/{study}/{timestr}_*.log')
 files = [x for x in files if not 'test' in x]
 files.sort()
 
@@ -31,7 +34,7 @@ for i, log_file in enumerate(files):
     
     new_cmd = ' '.join([
         'python train.py', org_cmd,
-        f' --resume={ckp} --mode=test --test-type=test --resume-epoch=BEST --timestr={timestr_new}'
+        f' --resume={ckp} --mode=test --test-type=test --resume-epoch=BEST --timestr={timestr_new} --analyze-predictions'
     ] + sys.argv[5:])
 
     
