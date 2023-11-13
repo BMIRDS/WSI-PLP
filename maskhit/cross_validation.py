@@ -33,6 +33,8 @@ args = opt.parse()
 
 config_file = args.user_config_file
 config_file_default = args.default_config_file
+folds = [int(i) for i in args.folds.split(',')] if args.folds else list(range(config.dataset.num_folds))
+print(f"Testing on folds: {list(folds)}")
 
 # args_config = default_options()
 print(f"config_file: {config_file}")
