@@ -11,6 +11,7 @@ dataset:
   is_cancer: !!bool False
   disease: !!str IBD_PROJECT
   timestr_model: !!str 2023_5_30
+  classes: !!str Inactive, Mild, Moderate, Severe
 
 patch:
   num_patches: !!int 150

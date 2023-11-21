@@ -77,8 +77,7 @@ def analyze_predictions():
     print(res)
 
 
-def calculate_metrics(ids, preds, targets, outcome_type='survival', mode = ''):
-
+def calculate_metrics(ids, preds, targets, outcome_type='survival', label_classes = ['Inactive', 'Mild', 'Moderate', 'Severe'], mode = ''):
     if outcome_type == 'survival':
         df = pd.DataFrame(np.concatenate([ids, targets, preds], axis=1))
         df.columns = ['id', 'time', 'event', 'pred']
@@ -113,6 +112,12 @@ def calculate_metrics(ids, preds, targets, outcome_type='survival', mode = ''):
                                         torch.softmax(torch.tensor(preds),
                                                       dim=1),
                                         multi_class='ovr')
+                    
+                    # Added confusion matrix calculation
+                    if mode == 'test' or mode == 'val':
+                        cm = confusion_matrix(targets, preds.argmax(axis = 1))
+                        show_confusion_matrix(cm = cm, label_classes = label_classes)
+                
                 else:
                     # binary
                     auc_score = roc_auc_score(
@@ -141,22 +146,15 @@ def calculate_metrics(ids, preds, targets, outcome_type='survival', mode = ''):
                 print(e)
                 auc_score = 0.5
 
-        # Added confusion matrix calculation
-        cm = confusion_matrix(targets, preds.argmax(axis=1))
         res = {'f1': f1, 'auc': auc_score}
-
-        # show_confusion_matrix(cm)
-
         return res
 
-def show_confusion_matrix(cm, save_path='confusion_matrix.png'):
-    num_classes = cm.shape[0]  # Get the number of classes from the confusion matrix
-    classes = [str(i) for i in range(num_classes)]  # Generate class labels based on the number of classes
-
+def show_confusion_matrix(cm, label_classes, save_path='confusion_matrix.png'):
+    print(f"Length of label classes: {len(label_classes)}")
     df_cm = pd.DataFrame(
         cm, 
-        index=classes,
-        columns=classes
+        index=label_classes,
+        columns=label_classes
     )
     
     # Plot the heatmap
@@ -168,7 +166,6 @@ def show_confusion_matrix(cm, save_path='confusion_matrix.png'):
     # Save to a file if save_path is provided
     plt.savefig(save_path, bbox_inches='tight')
     plt.close()
-    # print(f"Saved confusion matrix to {save_path}")
 
 
 

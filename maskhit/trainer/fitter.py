@@ -209,8 +209,6 @@ class HybridFitter:
 
         if mode != 'train' and self.config.dataset.outcome_type != 'mlm':
             self.meta_df[mode] = _df
-            print("IN PREPARE_DATASETS")
-            print(self.meta_df[mode])
             self.meta_df[mode].to_csv('tanmay.csv')
 
 
@@ -427,11 +425,12 @@ class HybridFitter:
             if self.config.dataset.outcome_type == 'mlm':
                 metrics = {'loss': 0}
             else:
+                label_classes = self.config.dataset.classes.split(',')
                 metrics = calculate_metrics(
                     ids=batch_inputs['ids_of_sample'].cpu().numpy(),
                     preds=preds.data.cpu().numpy(),
                     targets=targets.data.cpu().numpy(),
-                    outcome_type=self.config.dataset.outcome_type)
+                    outcome_type=self.config.dataset.outcome_type, label_classes = label_classes)
             perfs.update(metrics[self.metric], num_samples)
 
             # measure elapsed time
