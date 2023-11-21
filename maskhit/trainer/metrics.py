@@ -113,34 +113,25 @@ def calculate_metrics(ids, preds, targets, outcome_type='survival', label_classe
                                                       dim=1),
                                         multi_class='ovr')
                     
-                    # Added confusion matrix calculation
                     if mode == 'test' or mode == 'val':
+                        # displaying confusion matrix
                         cm = confusion_matrix(targets, preds.argmax(axis = 1))
                         show_confusion_matrix(cm = cm, label_classes = label_classes)
-                
+
+                        # saving multi-class AUC
+                        probs = torch.softmax(torch.tensor(preds), dim=1)
+                        save_multi_class_auc(probs, targets, label_classes, save_path = 'auc_plot_multi_class.png')
+
                 else:
-                    # binary
+                    # for binary classification
                     auc_score = roc_auc_score(
                         targets.reshape(-1),
                         torch.softmax(torch.tensor(preds), dim=1)[:, 1])
 
                     if mode == 'test':
                         # Calculate the FPR and TPR for all thresholds
-                        fpr, tpr, threshold = roc_curve(targets.reshape(-1), torch.softmax(torch.tensor(preds), dim=1)[:, 1])
-
-                        # Calculate the AUC (Area under the ROC Curve)
-                        roc_auc = auc(fpr, tpr)
-
-                        plt.title('Receiver Operating Characteristic')
-                        plt.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
-                        plt.legend(loc = 'lower right')
-                        plt.plot([0, 1], [0, 1],'r--')
-                        plt.xlim([0, 1])
-                        plt.ylim([0, 1])
-                        plt.ylabel('True Positive Rate')
-                        plt.xlabel('False Positive Rate')
-                        plt.savefig('auc_plot.png')
-                        plt.clf()  # Clear the current figure
+                        fpr, tpr, _ = roc_curve(targets.reshape(-1), torch.softmax(torch.tensor(preds), dim=1)[:, 1])
+                        plot_binary_AUC(fpr, tpr)
 
             except Exception as e:
                 print(e)
@@ -148,6 +139,38 @@ def calculate_metrics(ids, preds, targets, outcome_type='survival', label_classe
 
         res = {'f1': f1, 'auc': auc_score}
         return res
+
+def save_multi_class_auc(probs, targets, label_classes, save_path):
+    auc_scores = []
+
+    for i in range(len(label_classes)):
+        auc_score = roc_auc_score(targets == i, probs[:, i])
+        auc_scores.append(auc_score)
+        fpr, tpr, _ = roc_curve(targets == i, probs[:, i])
+        roc_auc = auc(fpr, tpr)
+
+        # Plot ROC curve
+        plt.plot(fpr, tpr, label=f'{label_classes[i]} (AUC = {roc_auc:.2f})')
+                   
+    plt.legend()
+    plt.savefig('auc_plot_multi_class.png')
+    plt.clf()
+
+
+def plot_binary_AUC(fpr, tpr):
+    # Calculate the AUC (Area under the ROC Curve)
+    roc_auc = auc(fpr, tpr)
+
+    plt.title('Receiver Operating Characteristic')
+    plt.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
+    plt.legend(loc = 'lower right')
+    plt.plot([0, 1], [0, 1],'r--')
+    plt.xlim([0, 1])
+    plt.ylim([0, 1])
+    plt.ylabel('True Positive Rate')
+    plt.xlabel('False Positive Rate')
+    plt.savefig('auc_plot.png')
+    plt.clf()  # Clear the current figure
 
 def show_confusion_matrix(cm, label_classes, save_path='confusion_matrix.png'):
     print(f"Length of label classes: {len(label_classes)}")

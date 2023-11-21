@@ -445,10 +445,6 @@ def main():
 
     data_dict = {"train": df_train, "val": df_test}
 
-    print("DATASETS")
-    print(df_train)
-    print(df_test)
-
     # Simply call main_worker function
     # print(f"Validation Folds: {df_test.fold.unique()}")
     if args.mode == 'test':
@@ -465,7 +461,6 @@ def main():
 
     else:
         print(f"Mode {args.mode} has not been implemented!")
-
 
 if __name__ == '__main__':
     main()
