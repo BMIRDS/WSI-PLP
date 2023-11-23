@@ -19,6 +19,10 @@ patch:
 
 model:
   weighted_loss: !!bool True
+  checkpoints_folder: !!str checkpoints_copy
+  resume: !!str 2023_5_30-0
+  resume_epoch: !!str BEST
+
   
   # Weight Decays
   wd_attn: !!float 1e-3
@@ -27,13 +31,13 @@ model:
   wd_pred: !!float 0.002
   
   # Learning Rates
-  lr_attn: !!float 1e-5
-  lr_fuse: !!float 1e-5
-  lr_loss: !!float 1e-5
-  lr_pred: !!float 7e-5
+  lr_attn: !!float 1e-4
+  lr_fuse: !!float 1e-4
+  lr_loss: !!float 1e-4
+  lr_pred: !!float 7e-4
 
   accumulation_steps: !!int 2
-  dropout: !!float 0.05
+  dropout: !!float 0.2
   batch_size: !!int 8
   override_logs: !!bool True
   sample_patient: !!bool True
