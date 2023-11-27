@@ -1,46 +1,45 @@
 import pandas as pd
 import numpy as np
 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=1, keepdims=True)
 
 # Read file into dataframe
-df = pd.read_csv('predictions/ibd_project/2023_5_30-val-2-predictions.csv', header=0, index_col=0)
-print(df)
+df_full = pd.read_csv('predictions/ibd_project/2023_5_30_new-test-0-predictions.csv', header=0, index_col=0)
 
-# Apply sigmoid to the second prediction column to get probabilities for class 1
-df["prob_class_1"] = sigmoid(df.iloc[:, 2].values)
-df["prob_class_0"] = 1 - df["prob_class_1"]
+prediction_columns = df_full.columns[1:5]
+class_probabilities = softmax(df_full[prediction_columns].values)
 
-# Extract columns
-targets = df.iloc[:, 3]
+for i, column in enumerate(prediction_columns):
+    df_full[f"prob_{column}"] = class_probabilities[:, i]
 
-# Define thresholds (modify as needed)
-HIGH_CONFIDENCE_THRESHOLD = 0.75
-HIGH_CONFIDENCE_THRESHOLD_0 = 0.6
-MIDDLE_CONFIDENCE_UPPER = 0.55
-MIDDLE_CONFIDENCE_LOWER = 0.45
+targets = df_full.iloc[:, 5]
+targets = targets.astype(int)
 
-# Identify cases based on conditions and return as dictionaries
-def extract_cases(condition, prob_column):
-    indices = df.index[condition].tolist()
-    probabilities = df[prob_column][condition].tolist()
-    return [{"index": idx, "probability": prob} for idx, prob in zip(indices, probabilities)]
+CONFIDENCE_THRESHOLD = 0.9
 
-# Identify cases
-high_conf_tp_class_0 = extract_cases((df["prob_class_0"] > HIGH_CONFIDENCE_THRESHOLD_0) & (targets == 0), "prob_class_0")
-high_conf_tp_class_1 = extract_cases((df["prob_class_1"] > HIGH_CONFIDENCE_THRESHOLD) & (targets == 1), "prob_class_1")
-high_conf_fp_class_0 = extract_cases((df["prob_class_0"] > HIGH_CONFIDENCE_THRESHOLD_0) & (targets == 1), "prob_class_0")
-high_conf_fp_class_1 = extract_cases((df["prob_class_1"] > HIGH_CONFIDENCE_THRESHOLD) & (targets == 0), "prob_class_1")
-uncertain_cases = extract_cases((df["prob_class_0"] > MIDDLE_CONFIDENCE_LOWER) & 
-                                (df["prob_class_0"] < MIDDLE_CONFIDENCE_UPPER) &
-                                (df["prob_class_1"] > MIDDLE_CONFIDENCE_LOWER) & 
-                                (df["prob_class_1"] < MIDDLE_CONFIDENCE_UPPER), 
-                                "prob_class_0")  # or "prob_class_1", depending on which one you'd like to use
+df_full['predicted_class'] = np.argmax(class_probabilities, axis=1)
+df_full['predicted_probability'] = np.max(class_probabilities, axis=1)
+
+print(df_full)
+
+# Identify high confidence true positives for each class
+high_conf_tp = {}
+for class_index in range(len(prediction_columns)):
+    condition = (df_full['predicted_class'] == class_index) & (targets == class_index) & (df_full['predicted_probability'] > CONFIDENCE_THRESHOLD)
+    filtered_df = df_full[condition]
+    first_column_values = filtered_df.iloc[:, 0]
+    indices = first_column_values.tolist()
+    probabilities = df_full.loc[condition, 'predicted_probability'].tolist()
+
+    # Pair each index with its corresponding probability
+    high_conf_tp[class_index] = list(zip(indices, probabilities))
 
 # Print results
-print("High confidence true positives for class 0:", high_conf_tp_class_0)
-print("High confidence true positives for class 1:", high_conf_tp_class_1)
-print("High confidence false positives for class 0:", high_conf_fp_class_0)
-print("High confidence false positives for class 1:", high_conf_fp_class_1)
-print("Cases that were around 50-50 for both classes:", uncertain_cases)
+for class_index, cases in high_conf_tp.items():
+    if len(cases) > 0:
+        highest_probability_case = max(cases, key=lambda x: x[1])
+        print(f"For {class_index}: {highest_probability_case}")
+    else:
+        print("No confident cases found")

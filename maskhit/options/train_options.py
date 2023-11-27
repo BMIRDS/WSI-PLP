@@ -207,7 +207,7 @@ class TrainOptions(BaseOptions):
                                  help='batch size')
         self.parser.add_argument('--epochs',
                                  type=int,
-                                 default=100,
+                                 default=30, # changed from 100 to 150
                                  help='total number of epochs to train the model')
         self.parser.add_argument('--warmup-epochs',
                                  type=int,
@@ -215,11 +215,11 @@ class TrainOptions(BaseOptions):
                                  help='total number of epochs to train the model')
         self.parser.add_argument('--patience',
                                  type=int,
-                                 default=10, # changed from 5 to 10
+                                 default=200, # changed from 5 to 200
                                  help='break the training after how number of epochs of no improvement')
         self.parser.add_argument('--anneal-freq',
                                  type=int,
-                                 default=15, # changed from 50 to 10
+                                 default=10, # changed from 50 to 10
                                  help='CosineAnnealingWarmRestarts: anneal frequency')
         self.parser.add_argument('--t-mult',
                                  type=int,
@@ -298,11 +298,11 @@ class TrainOptions(BaseOptions):
         # resume from checkpoint
         self.parser.add_argument('--resume',
                                  type=str,
-                                 default='pretrained_10x_224_resnet18', # FIX: changed from pretrained_20x_448_resnet34
+                                 default='2023_5_30-0', # FIX: changed from pretrained_20x_448_resnet34
                                  help='name of the model to be resumed')
         self.parser.add_argument('--resume-epoch',
                                  type=str,
-                                 default='0500',
+                                 default='BEST',
                                  help='epoch of the model to be resumed')
         self.parser.add_argument('--resume-train',
                                  action='store_true',
@@ -361,7 +361,7 @@ class TrainOptions(BaseOptions):
         # experiment optional options
         self.parser.add_argument('--checkpoints-folder',
                                  type=str,
-                                 default='checkpoints',
+                                 default='checkpoints_new',
                                  help='path to the checkpoints folder')
         self.parser.add_argument('--log-freq',
                                  type=int,

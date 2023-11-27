@@ -11,8 +11,7 @@ python train.py --user-config-file configs/config_ibd_train.yml --default-config
 
 
 To test
-Apptainer> CUDA_VISIBLE_DEVICES=8 python train.py  --user-config-file configs/config_ibd_train.yml --default-config-file configs/config_default.yaml 
---fold=0  --resume=2023_5_30-0 --mode=test --test-type=test --resume-epoch=BEST --timestr=2023_5_30-test
+Apptainer> CUDA_VISIBLE_DEVICES=8 python train.py  --user-config-file configs/config_ibd_train.yml --default-config-file configs/config_default.yaml --fold=0  --resume=2023_5_30-0 --mode=test --test-type=test --resume-epoch=BEST --timestr=2023_5_30_new-test
 """
 
 
@@ -25,6 +24,7 @@ import sys
 import glob
 import socket
 from maskhit.trainer.fitter import HybridFitter
+from maskhit.trainer.metrics import analyze_predictions
 from maskhit.trainer.losses import FlexLoss
 from options.train_options import TrainOptions
 from utils.config import Config
@@ -56,9 +56,8 @@ opt.parser.add_argument(
         "--analyze-predictions",
         action='store_true',
         default=False,
-        help="hether to analyze aggregated predictions"
+        help="whether to analyze aggregated predictions"
 )
-
 
 args = opt.parse()
 config = Config(args.default_config_file, args.user_config_file)
@@ -68,6 +67,10 @@ args.all_arguments = ' '.join(sys.argv[1:])
 
 assert not args.sample_all, "the argument --sample-all is deprecated, use --num-patches=0 instead"
 
+if args.analyze_predictions:
+    analyze_predictions()
+    exit(0)
+    
 # print(f"args.cancer: {args.cancer}")
 if args.cancer == '.':
     args.cancer = ""
@@ -280,9 +283,18 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
 
     # Selects columns from meta_file df and merges them into meta_split based on a shared 'id_patient' column
     # includes all the columns from meta_split and only the selected columns from meta_file
-    meta_split = meta_split.merge(meta_file[vars_to_include],
-                                  on='id_patient',
-                                  how='inner')
+    try:
+        meta_split = meta_split.merge(meta_file[vars_to_include],
+                                    on='id_patient',
+                                    how='inner')
+    except:
+        meta_split['id_svs'] = meta_split['id_patient']
+        print(vars_to_include)
+        if 'id_patient' in vars_to_include:
+            vars_to_include.remove('id_patient')
+        meta_split = meta_split.merge(meta_file[vars_to_include],
+                                    on='id_svs',
+                                    how='inner')
     
     meta_split['id_patient_num'] = meta_split.id_patient.astype(
         'category').cat.codes
@@ -336,7 +348,7 @@ def main():
     args.model_name = model_name
 
     # setting the checkpoints folder with the name of model (including date and fold)
-    checkpoints_folder = os.path.join("checkpoints", model_name)
+    checkpoints_folder = os.path.join(args.checkpoints_folder, model_name)
     args.hostname = socket.gethostname()
 
     # loading datasets

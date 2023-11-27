@@ -41,23 +41,24 @@ def read_and_adjust_csv(file_name, last_max_id):
     
     # Extract the required columns into numpy arrays
     id_array = df.iloc[:, 1].values.reshape(-1, 1)
-    preds_array = df.iloc[:, 2:4].values
-    targets_array = df.iloc[:, 4].values.reshape(-1, 1)
+    preds_array = df.iloc[:, 2:6].values
+    targets_array = df.iloc[:, 6].values.reshape(-1, 1)
 
     return id_array, preds_array, targets_array
 
 def analyze_predictions():
-    print("Congrats")
+    print("Analyzing Predictions")
 
     # List of files
     num_files = 5
-    base_path = 'predictions/ibd_project/2023_5_30-val-'
+    base_path = 'predictions/ibd_project/2023_5_30_new-test-'
     files = [f"{base_path}{i}-predictions.csv" for i in range(num_files)]
     
     # Initialize containers for aggregated data
     agg_ids = np.array([]).reshape(-1, 1)
-    agg_preds = np.array([]).reshape(-1, 2)
+    agg_preds = np.array([]).reshape(-1, 4)
     agg_targets = np.array([]).reshape(-1, 1)
+
 
     # Initialize last maximum id
     last_max_id = -1
@@ -72,6 +73,7 @@ def analyze_predictions():
         agg_ids = np.vstack([agg_ids, ids])
         agg_preds = np.vstack([agg_preds, preds])
         agg_targets = np.vstack([agg_targets, targets])
+    
 
     res = calculate_metrics(agg_ids, agg_preds, agg_targets, outcome_type='classification', mode='test')
     print(res)
@@ -150,7 +152,7 @@ def save_multi_class_auc(probs, targets, label_classes, save_path):
         roc_auc = auc(fpr, tpr)
 
         # Plot ROC curve
-        plt.plot(fpr, tpr, label=f'{label_classes[i]} (AUC = {roc_auc:.2f})')
+        plt.plot(fpr, tpr, label=f'{label_classes[i]} (AUC = {roc_auc:.4f})')
                    
     plt.legend()
     plt.savefig('auc_plot_multi_class.png')
@@ -224,17 +226,6 @@ class ModelEvaluation(object):
                     [self.data[k], v.data.cpu().numpy()])
 
     def evaluate(self, mode = ''):
-
-        # print("id")
-        # print(type(self.data['ids']))
-        # print(self.data['ids'])
-        # print("preds")
-        # print(type(self.data['preds']))
-        # print(self.data['preds'])
-        # print("targets")
-        # print(type(self.data['targets']))
-        # print(self.data['targets'])
-
         metrics = calculate_metrics(self.data['ids'],
                                     self.data['preds'],
                                     self.data['targets'],
@@ -251,12 +242,9 @@ class ModelEvaluation(object):
     def save(self, filename):
         values = []
         for k, v in self.data.items():
-            # print(k, v)
             values.append(v)
         df = pd.DataFrame(np.concatenate(values, 1))
         if filename is None:
             return df
         else:
             df.to_csv(filename)
-            # print("FILENAME")
-            # print(filename)

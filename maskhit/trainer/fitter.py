@@ -22,7 +22,7 @@ from maskhit.trainer.losses import ContrasiveLoss
 from maskhit.trainer.slidedataset import SlidesDataset
 from maskhit.trainer.transforms import get_data_transforms
 from maskhit.trainer.meters import AverageMeter, ProgressMeter
-from maskhit.trainer.metrics import ModelEvaluation, calculate_metrics, analyze_predictions
+from maskhit.trainer.metrics import ModelEvaluation, calculate_metrics
 from maskhit.trainer.logger import compose_logging
 from maskhit.trainer.earlystopping import EarlyStopping
 
@@ -209,7 +209,6 @@ class HybridFitter:
 
         if mode != 'train' and self.config.dataset.outcome_type != 'mlm':
             self.meta_df[mode] = _df
-            self.meta_df[mode].to_csv('tanmay.csv')
 
 
         elif self.config.model.sample_patient or self.args.sample_svs:
@@ -453,7 +452,7 @@ class HybridFitter:
         return res
 
     def evaluate(self, df_val, epoch=0, mode = ''):
-
+        df_val.to_csv('fold_0.csv', index=False) 
         regions_per_patient = self.args.mode_ops['val']['regions_per_patient']
         svs_per_patient = self.args.mode_ops['val']['svs_per_patient']
 
@@ -493,8 +492,6 @@ class HybridFitter:
                 losses1 += attn_loss_seq.mean().item()
                 losses2 += attn_loss_cls.mean().item()
             else:
-                # print("AMIT SAMPLE")
-                # print(batch_inputs['ids'].view(-1, 1))
                 eval_v.update({
                     "ids": batch_inputs['ids'].view(-1, 1),
                     "preds": preds,
@@ -692,7 +689,6 @@ class HybridFitter:
             model = _CustomDataParallel(model).cuda()
             self.loss_fn.cuda()
 
-        print("Called in fit after model initialization")
         self.model = model
         self.reset_optimizer()
         self.resume_checkpoint()
@@ -703,23 +699,19 @@ class HybridFitter:
                 if return_code:
                     break
         elif procedure == 'test':
-            if self.args.analyze_predictions:
-                analyze_predictions()
-            else:
-                res = []
-                print("HERE")
-                for i in range(self.args.num_repeats):
-                    info_str = self.evaluate(data_dict['val'], epoch=0, mode = 'test')
-                    self.writer['meta'].info(info_str)
-                    res.append(info_str)
+            res = []
+            for i in range(self.args.num_repeats):
+                info_str = self.evaluate(data_dict['val'], epoch=0, mode = 'test')
+                self.writer['meta'].info(info_str)
+                res.append(info_str)
 
-                df_sum = pd.DataFrame(res)
-                df_sum.drop(['mode'], axis=1, inplace=True)
-                self.writer['meta'].info("Average prediction")
-                self.writer['meta'].info(df_sum.mean().to_dict())
-                self.writer['meta'].info("Standard deviation")
-                self.writer['meta'].info(df_sum.std().to_dict())
-                self.writer['data'].info(df_sum.to_csv())
+            df_sum = pd.DataFrame(res)
+            df_sum.drop(['mode'], axis=1, inplace=True)
+            self.writer['meta'].info("Average prediction")
+            self.writer['meta'].info(df_sum.mean().to_dict())
+            self.writer['meta'].info("Standard deviation")
+            self.writer['meta'].info(df_sum.std().to_dict())
+            self.writer['data'].info(df_sum.to_csv())
 
         elif procedure == 'extract':
             print("Called in the extract mode")
