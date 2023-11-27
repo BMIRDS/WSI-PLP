@@ -1,16 +1,18 @@
 dataset:
-  meta_svs: !!str meta/IBD_PROJECT/svs_meta.pickle
-  meta_all: !!str meta/ibd_project_meta.pickle
+  # FOR TRAINING
+  # meta_svs: !!str meta/IBD_PROJECT/svs_meta.pickle
+  # meta_all: !!str meta/ibd_project_meta.pickle
 
-  # meta_svs: !!str meta/vis_ibd_project_locs-split.pickle
-  # meta_all: !!str meta/vis_ibd_project_meta-split.pickle
+  # FOR VISUALIZATION
+  meta_svs: !!str meta/vis_ibd_project_locs-split.pickle
+  meta_all: !!str meta/vis_ibd_project_meta-split.pickle
 
   outcome: !!str Diagnosis
   outcome_type: !!str classification
   study: !!str ibd_project
   is_cancer: !!bool False
   disease: !!str IBD_PROJECT
-  timestr_model: !!str 2023_5_30
+  timestr_model: !!str 2023_5_30_new
   classes: !!str Inactive, Mild, Moderate, Severe
 
 patch:
@@ -19,7 +21,6 @@ patch:
 
 model:
   weighted_loss: !!bool True
-  checkpoints_folder: !!str checkpoints_copy
   resume: !!str 2023_5_30-0
   resume_epoch: !!str BEST
 
