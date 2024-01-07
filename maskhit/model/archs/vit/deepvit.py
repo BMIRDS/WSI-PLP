@@ -34,15 +34,13 @@ def get_attention_map(attn_map):
 
 def get_attention_map_multi(attn_maps):
     if attn_maps.size(1) == 0:
-        print("EMPTY")
+        raise ValueError("Attention map is empty")
     
     results = []
-    print(attn_maps.size(1))
     for x in range(attn_maps.size(1)):
         attn_map = get_attention_map(attn_maps[:, x])
         results.append(attn_map)
 
-    print(torch.stack(results).size())
     return torch.stack(results)
 
 
