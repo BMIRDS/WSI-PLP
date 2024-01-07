@@ -3,6 +3,7 @@ import yaml
 import os
 import subprocess
 import random  # For random sampling
+from pathlib import Path
 
 # ------------------------------
 # Random Grid Search Hyperparameter Tuning
@@ -47,7 +48,8 @@ for _ in range(NUM_TRIALS):
     temp_config['model']['batch_size'] = batch_size
 
     # Define a unique filename for the current config
-    temp_file_path = os.path.join("temp", f"config_temp_{lr_pred}_{wd_pred}_{dropout}_{accum_steps}_{batch_size}.yml")
+    file_name = f"config_temp_{lr_pred}_{wd_pred}_{dropout}_{accum_steps}_{batch_size}.yml"
+    temp_file_path = Path("temp") / file_name
 
     # Save the modified config to a temporary file
     with open(temp_file_path, "w") as file:
