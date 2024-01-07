@@ -100,7 +100,7 @@ def calculate_metrics(ids, preds, targets, outcome_type='survival', label_classe
     elif outcome_type == 'classification':
         df = pd.DataFrame(np.concatenate([ids, targets, softmax(preds, axis=1)], axis=1))
         targets = df.iloc[:, :2].groupby(0).mean().to_numpy().astype(int)
-        preds = df.groupby(0).apply(lambda x: find_confident_instance(x.to_numpy()[:, 2:]))
+        preds = df.groupby(0).apply(lambda x: find_confident_instance(x.to_numpy()[:, 2:])) # in patient mode, try to use average prediction instead of most confident
         preds = np.stack(preds.to_list())
         f1 = f1_score(targets, preds.argmax(axis=1), average='weighted')
 
@@ -142,7 +142,19 @@ def calculate_metrics(ids, preds, targets, outcome_type='survival', label_classe
         res = {'f1': f1, 'auc': auc_score}
         return res
 
-def save_multi_class_auc(probs, targets, label_classes, save_path):
+def save_multi_class_auc(probs, targets, label_classes, save_path = 'auc_plot_multi_class.png'):
+    """
+    Calculates and plots the AUC for multiple classes and saves the plot at save_path
+
+    Args:
+        probs (np.ndarray): probability predictions of each class for each sample
+        targets (np.ndarray): true class labels for each sample
+        label_classes (list): list of class labels
+        save_path (str): file path where plot is saved
+    
+    Returns:
+        None
+    """
     auc_scores = []
 
     for i in range(len(label_classes)):
@@ -155,7 +167,7 @@ def save_multi_class_auc(probs, targets, label_classes, save_path):
         plt.plot(fpr, tpr, label=f'{label_classes[i]} (AUC = {roc_auc:.4f})')
                    
     plt.legend()
-    plt.savefig('auc_plot_multi_class.png')
+    plt.savefig(save_path)
     plt.clf()
 
 
