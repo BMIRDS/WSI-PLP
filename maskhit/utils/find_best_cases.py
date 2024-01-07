@@ -4,11 +4,15 @@ The scripts applies the softmax function to calculate class probabilities. It id
 and high-confidence false positives for each class, based on a defined confidence threshold that can be set by the user.
 The script uses argparse to allow for file input. Results for true positive and false positive are sorted by confidence and displayed 
 showcasing the top cases for each class.
+
+Example Usage: python utils/find_best_cases.py --file predictions/ibd_project/2023_5_30_new-test-0-predictions.csv
 """
 
 import pandas as pd
 import numpy as np
 import argparse
+import sys
+from pathlib import Path
 
 # Global Variables
 CONFIDENCE_THRESHOLD = 0.5
@@ -29,12 +33,24 @@ def display_result(df, label):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Load a CSV file.')
-    parser.add_argument('--file', default='predictions/ibd_project/2023_5_30_new-test-0-predictions.csv', 
+    parser.add_argument('--file', default=None, 
                         help='Path to the CSV predictions file')
     args = parser.parse_args()
 
-    # Read file into dataframe ()
-    df_full = pd.read_csv(args.file, header=0, index_col=0)
+    if not args.file:
+        sys.exit("Error: No file specified. Please provide predictions file")
+    
+    file_path = Path(args.file)
+
+    # Check if the file exists
+    if not file_path.exists():
+        sys.exit(f"Error: The file {file_path} does not exist")
+
+    try:
+        # Read file into dataframe ()
+        df_full = pd.read_csv(args.file, header=0, index_col=0)
+    except Exception as e:
+        sys.exit(f"Error: Failed to read the file {e}")
 
     prediction_columns = df_full.columns[1:5]
     class_probabilities = softmax(df_full[prediction_columns].values)
