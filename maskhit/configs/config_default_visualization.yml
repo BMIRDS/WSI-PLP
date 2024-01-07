@@ -1,3 +1,16 @@
+# NOTE: This is the configuration file for running the `
+# create_attention_maps.py` script. You do not have to 
+# create a configuration file if paths to stored WSIs
+# are being referred to by a valid path on the Teton server.
+# If the path is relative to another server, then creating
+# a configuration file is recommended.
+#---------------------------------------------------
+
 dataset:
+  # Path to the folder containing WSIs on server other than teton
+  # Example: /pool2/data/WSI_IBD/svs_2019/
   old_base_path: !!str <SET_YOUR_OWN_VALUE>
+
+  # Path to the folder containing WSIs on teton server
+  # Example: /datasets/WSI_IBD/svs_2019/
   new_base_path:  !!str <SET_YOUR_OWN_VALUE>
