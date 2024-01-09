@@ -14,20 +14,25 @@ To test
 Apptainer> CUDA_VISIBLE_DEVICES=8 python train.py  --user-config-file configs/config_ibd_train.yml --default-config-file configs/config_default.yaml --fold=0  --resume=2023_5_30-0 --mode=test --test-type=test --resume-epoch=BEST --timestr=2023_5_30_new-test
 """
 
-
-import os
-import time
+# standard libraries
 import ast
+import glob
+import os
+import socket
+import sys
+import time
+from pathlib import Path
+
+# 3rd party
 import pandas as pd
 import torch
-import sys
-import glob
-import socket
+
+# custom/own libraries
 from maskhit.trainer.fitter import HybridFitter
-from maskhit.trainer.metrics import analyze_predictions
 from maskhit.trainer.losses import FlexLoss
 from options.train_options import TrainOptions
 from utils.config import Config
+
 
 # Defining a global variable to store available device
 global device
@@ -52,24 +57,13 @@ opt.parser.add_argument(
         "--user-config-file", 
         type=str,
         help="Path to the user-defined configuration file.")
-opt.parser.add_argument(
-        "--analyze-predictions",
-        action='store_true',
-        default=False,
-        help="whether to analyze aggregated predictions"
-)
 
 args = opt.parse()
 config = Config(args.default_config_file, args.user_config_file)
-
 # string holding command-line arguments joined with spaces
 args.all_arguments = ' '.join(sys.argv[1:])
 
 assert not args.sample_all, "the argument --sample-all is deprecated, use --num-patches=0 instead"
-
-if args.analyze_predictions:
-    analyze_predictions()
-    exit(0)
     
 # print(f"args.cancer: {args.cancer}")
 if args.cancer == '.':
@@ -83,7 +77,11 @@ if hasattr(config.model, 'wd_attn') and hasattr(config.model, 'wd_fuse') and has
     pass
 else:
     if hasattr(config.model, 'wd'):
-        args.wd_attn = args.wd_fuse = args.wd_pred = args.wd_loss = config.patch.wd
+        args.wd_attn = config.patch.wd
+        args.wd_fuse = config.patch.wd
+        args.wd_pred = config.patch.wd
+        args.wd_loss = config.patch.wd
+
 
 # weight decay for preidction layer
 if hasattr(config.model, 'lr_pred'):
@@ -197,7 +195,9 @@ if args.visualization:
     args.vis_spec = f"{args.timestr}-{config.model.resume}/{args.vis_layer}-{args.vis_head}"
 
 # sets the current working directory to the directory where the script is located
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+script_path = Path(__file__).resolve()
+script_dir = script_path.parent
+os.chdir(script_dir)
 
 def get_checkpoint_epoch(fname):
     """
@@ -287,7 +287,8 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
         meta_split = meta_split.merge(meta_file[vars_to_include],
                                     on='id_patient',
                                     how='inner')
-    except:
+    except KeyError as e:
+        print(f"KeyError: {e}")
         meta_split['id_svs'] = meta_split['id_patient']
         print(vars_to_include)
         if 'id_patient' in vars_to_include:
@@ -427,7 +428,9 @@ def main():
                             meta_file=meta_svs, 
                             vars_to_include=vars_to_include)
 
-
+    print("df_test")
+    print(df_test)
+    
     if config.dataset.outcome_type == 'classification':
         num_classes = len(df_train[config.dataset.outcome].unique().tolist())
     else:
@@ -457,6 +460,8 @@ def main():
 
 
     data_dict = {"train": df_train, "val": df_test}
+
+    df_test.to_csv('fold0.csv')
 
     # Simply call main_worker function
     # print(f"Validation Folds: {df_test.fold.unique()}")
