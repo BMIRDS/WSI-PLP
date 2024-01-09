@@ -53,7 +53,7 @@ def read_and_adjust_csv(file_name, last_max_id):
         - array of predictions
         - array of target data
     """
-    
+
     df = pd.read_csv(file_name)
 
     # Adjust the ids
@@ -66,7 +66,7 @@ def read_and_adjust_csv(file_name, last_max_id):
 
     return id_array, preds_array, targets_array
 
-def aggregate_predictions(study_name, timestr, num_files = 5):
+def aggregate_predictions(study_name, timestr, classes, num_files = 5):
     base_path = f'predictions/{study_name}/{timestr}'
     files = [f"{base_path}{i}-predictions.csv" for i in range(num_files)]
     
@@ -90,11 +90,11 @@ def aggregate_predictions(study_name, timestr, num_files = 5):
         agg_preds = np.vstack([agg_preds, preds])
         agg_targets = np.vstack([agg_targets, targets])    
 
-    res = calculate_metrics(agg_ids, agg_preds, agg_targets, outcome_type='classification', mode='test')
+    res = calculate_metrics(agg_ids, agg_preds, agg_targets, label_classes = classes, outcome_type='classification', mode='test')
     print(res)
 
 
-def calculate_metrics(ids, preds, targets, outcome_type='survival', label_classes = ['Inactive', 'Mild', 'Moderate', 'Severe'], mode = ''):
+def calculate_metrics(ids, preds, targets, label_classes, outcome_type='survival', mode = ''):
     if outcome_type == 'survival':
         df = pd.DataFrame(np.concatenate([ids, targets, preds], axis=1))
         df.columns = ['id', 'time', 'event', 'pred']
