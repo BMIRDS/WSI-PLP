@@ -113,10 +113,15 @@ def calculate_metrics(ids, preds, targets, label_classes, outcome_type='survival
         return res
 
     elif outcome_type == 'classification':
-        df = pd.DataFrame(np.concatenate([ids, targets, softmax(preds, axis=1)], axis=1))
+        
+        # this df will be used in extracting grouped targets and preds
+        df = pd.DataFrame(np.concatenate([ids, targets, preds], axis=1))
+        # grouping targets and preds by patient if applicable
         targets = df.iloc[:, :2].groupby(0).mean().to_numpy().astype(int)
-        preds = df.groupby(0).apply(lambda x: find_confident_instance(x.to_numpy()[:, 2:])) # in patient mode, try to use average prediction instead of most confident
+        # suggestion by Shuai: use average prediction instead of most confident prediction
+        preds = df.groupby(0).apply(lambda x: find_confident_instance(x.to_numpy()[:, 2:]))
         preds = np.stack(preds.to_list())
+        
         f1 = f1_score(targets, preds.argmax(axis=1), average='weighted')
 
         if len(np.unique(targets)) != preds.shape[1]:
