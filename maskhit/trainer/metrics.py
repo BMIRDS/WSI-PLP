@@ -229,6 +229,7 @@ def show_confusion_matrix(cm, label_classes, save_path='confusion_matrix.png'):
 class ModelEvaluation(object):
 
     def __init__(self,
+                 config_file,
                  outcome_type='survival',
                  loss_function=None,
                  mode='train',
@@ -236,6 +237,7 @@ class ModelEvaluation(object):
                  device=torch.device('cpu'),
                  timestr=None):
 
+        self.label_classes = config_file.dataset.classes.split(',')
         self.outcome_type = outcome_type
         self.criterion = loss_function
         self.mode = mode
@@ -261,7 +263,8 @@ class ModelEvaluation(object):
         metrics = calculate_metrics(self.data['ids'],
                                     self.data['preds'],
                                     self.data['targets'],
-                                    outcome_type=self.outcome_type, mode = mode)
+                                    outcome_type=self.outcome_type, mode = mode,
+                                    label_classes= self.label_classes)
 
         loss_epoch = self.criterion.calculate(
             torch.tensor(self.data['preds']).to(self.device),

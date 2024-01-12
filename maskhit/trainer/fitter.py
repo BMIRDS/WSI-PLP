@@ -16,6 +16,7 @@ import math
 import pickle
 import numpy as np
 from utils.config import Config
+from pathlib import Path
 
 from maskhit.model.models import HybridModel
 from maskhit.trainer.losses import ContrasiveLoss
@@ -239,9 +240,6 @@ class HybridFitter:
     def get_datasets(self, pickle_file, mode='train'):
         transform = get_data_transforms()[mode]
 
-        print(pickle_file.keys())
-        
-
         ds = SlidesDataset(data_file=pickle_file,
                            outcomes=self.args.outcomes,
                            writer=self.writer,
@@ -370,7 +368,8 @@ class HybridFitter:
                                 loss_function=self.criterion,
                                 mode='train',
                                 device=self.device,
-                                timestr=self.timestr)
+                                timestr=self.timestr,
+                                config_file = self.config)
 
         self.writer['meta'].info('-' * 30)
 
@@ -467,7 +466,8 @@ class HybridFitter:
                                  loss_function=self.criterion,
                                  mode='val',
                                  device=self.device,
-                                 timestr=self.timestr)
+                                 timestr=self.timestr,
+                                 config_file = self.config)
 
         # forward prop over all validation data
         losses0 = 0
@@ -506,9 +506,8 @@ class HybridFitter:
             }
         else:
             res = eval_v.evaluate(mode)
-            # print("SAVING IN PRED FILES")
-            pred_file = f"predictions/{self.model_name}-predictions.csv"
-            os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+            pred_file = Path(f"predictions/{self.model_name}-predictions.csv")
+            pred_file.parent.mkdir(parents=True, exist_ok=True)
             eval_v.save(pred_file)
 
         res['epoch'] = epoch
@@ -540,7 +539,7 @@ class HybridFitter:
         if self.config.dataset.outcome_type == 'survival':
             performance_measure = torch.tensor(val_res['c-index'])
         elif self.config.dataset.outcome_type == 'classification':
-            performance_measure = torch.tensor(val_res['f1']) # changed from 'auc' to 'f1-score'
+            performance_measure = torch.tensor(val_res[self.config.model.performance_measure])
         elif self.config.dataset.outcome_type == 'regression':
             performance_measure = torch.tensor(val_res['r2'])
         elif self.config.dataset.outcome_type == 'mlm':
@@ -550,7 +549,7 @@ class HybridFitter:
         self.scheduler.step()
 
         is_best = False
-        epoch_start_monitoring = 5 # changed from 0 to 5
+        epoch_start_monitoring = 0
         if performance_measure > self.best_metric and epoch >= epoch_start_monitoring:
             self.best_metric = performance_measure
             is_best = True
