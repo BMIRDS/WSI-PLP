@@ -1,5 +1,4 @@
 import pandas as pd
-import pathlib
 import tqdm
 import numpy as np
 import argparse
@@ -32,9 +31,7 @@ parser.add_argument('--grid-size',
 
 args = parser.parse_args()
 
-
-
-magnification = args.magnification
+magnification = float(args.magnification)
 patch_size = args.patch_size
 region_size = args.region_size
 grid_size = args.grid_size
@@ -48,9 +45,8 @@ df_svs = pd.read_pickle(args.meta_svs)
 
 counts = []
 for i, row in tqdm.tqdm(df_svs.iterrows(), total=df_svs.shape[0]):
-    print(row)
     df_i = pd.read_pickle(
-        f"data/IBD_PROJECT/{row['id_svs']}/mag_{magnification}-size_{patch_size}/meta.pickle"
+        f"data/{row['cancer']}/{row['id_svs']}/mag_{magnification}-size_{patch_size}/meta.pickle"
     )
     n_regions = df_i.loc[
         (df_i.pos_x % grid_size == 0) & (df_i.pos_y % grid_size == 0) &
