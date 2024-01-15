@@ -1,32 +1,51 @@
 import pandas as pd
+import argparse
 
-region_size = 2240
-study = 'IBD_PROJECT' # change to name of disease/cancer
+parser = argparse.ArgumentParser(description='Get Region Info')
+
+parser.add_argument('--meta-file',
+                    type=str,
+                    default = 'meta/ibd_project_meta.pickle',
+                    help='svs meta file')
+parser.add_argument('--svs-file',
+                    type=str,
+                    default = 'meta/ibd_project_svs.pickle',
+                    help='svs meta file')
+parser.add_argument('--study-name',
+                    type=str,
+                    default = 'IBD_PROJECT',
+                    help='name of cancer or disease')
+parser.add_argument('--region-size',
+                    type=int,
+                    default=2240,
+                    help='region size')
+parser.add_argument('--ids', nargs='+', help='List of IDs')
+
+
+args = parser.parse_args()
+
+study = args.study_name
 
 # meta information about dataset e.g. case_number, diagnosis, etc.
-df_meta = pd.read_pickle('meta/ibd_project_meta.pickle')
+df_meta = pd.read_pickle(args.meta_file)
 
 # contains svs_path, svs_id, valid_counts
-df_svs = pd.read_pickle('meta/ibd_project_svs.pickle')
+df_svs = pd.read_pickle(args.svs_file)
 
-# slides to select for visualization, if empty all slides selected
-sel_ids = [
-    '10SP1903670 A3-1_SS12252_005753', # HCTP for Inactive
-    '10SP1905634 A1-5_SS12253_015804', # HCTP for Mild
-    '10SP1902202 F1-4_SS12253_215536', # HCTP for Moderate
-    '10SP1912458 B1-3_SS12253_203448' # HCTP for Severe
-]
+# slides to select for visualization, specified in arguments
+sel_ids = args.ids
 
 df_svs = df_svs.loc[df_svs.id_svs.isin(sel_ids)]
 df_meta = df_meta.loc[df_meta.case_number.apply(lambda entry: entry.split('.')[0]).isin(df_svs.id_svs)]
 
 res = []
 for i, row in df_svs.iterrows():
+    print(row)
     df_i = pd.read_pickle(
-        f"data/{study}/{row['id_svs']}/mag_20.0-size_224/meta.pickle")
+        f"data/{row['study_name']}/{row['id_svs']}/mag_20.0-size_224/meta.pickle")
     
     # counts_x where x is dependent on region_size
-    if region_size == 2240:
+    if args.region_size == 2240:
         df_i = df_i.loc[df_i.counts_10 > 0, ['pos']]
     else:
         df_i = df_i.loc[df_i.counts_20 > 0, ['pos']]
