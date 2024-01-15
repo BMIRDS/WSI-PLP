@@ -1,22 +1,25 @@
-import pandas as pd
-import pickle
-import tqdm
+# Python standard libraries
+import argparse
 import glob
 import os
-import matplotlib.pyplot as plt
-import matplotlib.patches as mp
-from skimage.morphology import remove_small_holes
-import numpy as np
+import pickle
+
+# Third-party libraries
 import cv2
-from vis.wsi import WSI
+import matplotlib.patches as mp
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from skimage.morphology import remove_small_holes
+from tqdm import tqdm
+
+# Own libraries
 from utils.config import Config
-import argparse
-import math
-import csv
-import openslide
+from vis.wsi import WSI
 
 class WSIVisualizer(WSI):
-    def __init__(self, meta_dict, svs_id, id_ft, id_pt, mag_mask = 1.25, config_file = None, complete_pipeline = False):
+    def __init__(self, meta_dict: dict, svs_id: int, id_ft: int, id_pt: int, 
+                 mag_mask: float = 1.25, config_file: str = None, complete_pipeline: bool = False):
         self.df_meta_ckp = pd.DataFrame(meta_dict).sort_values('order').reset_index(drop=True)
         self.id_ft = id_ft
         self.id_pt = id_pt
@@ -51,12 +54,12 @@ class WSIVisualizer(WSI):
         #     self.compress_global_attention(model_name, epoch, plot_result=True)
         
         if complete_pipeline:
-            _, _ = self.complete_pipeline(sel_region=(3370,200,500,1.25), 
-                      sel_patch=[(1500+100,500+100,28,10),(1500+500,500+300,28,10)], 
+            _, _ = self.complete_pipeline(sel_region=(267,890,300,1.25), 
+                      sel_patch=[(267,890,250,40)], 
                       cl=0.4, ch=0.8)
             print("FINISHED RUNNING COMPLETE_PIPELINE")
     
-    def process_meta(self, svs_dir = 'svs_2019'):
+    def process_meta(self, svs_dir: str = 'svs_2019'):
         layer_i = head_i = 'None'
         for _, row in self.df_meta_ckp.iterrows():
             study = row['study']
@@ -76,14 +79,14 @@ class WSIVisualizer(WSI):
             for _, row_i in df_meta.drop_duplicates('id_svs_num').iterrows():
                 svs_id = row_i['id_svs']
                 file_id = df_meta.loc[df_meta.id_svs == svs_id].id_svs.tolist()[0]
-                svs_path = glob.glob(f"/home/datasets/WSI_IBD/{svs_dir}/{file_id}.svs")[0]
+                svs_path = glob.glob(f"/datasets/WSI_IBD/{svs_dir}/{file_id}.svs")[0]
                 self.id_to_path[svs_id] = svs_path
             
             svs_path_mapping = pd.DataFrame([], columns=['id_svs','svs_path'])
             df_meta = df_meta.merge(svs_path_mapping, on='id_svs')
             df_meta.to_pickle(f'features/{model_name}/{layer_i}-{head_i}/{study}/{epoch}/meta.pickle')
     
-    def restore_agg_attn_map(self, row):
+    def restore_agg_attn_map(self, row: pd.Series):
         """
         Parameters:
         - row (pd.Series): expected to have following keys: model_name, study, and epoch
@@ -108,7 +111,7 @@ class WSIVisualizer(WSI):
                 print(f"Error: {e}")
         return attn_maps
 
-    def get_diff_map(self, id_svs):
+    def get_diff_map(self, id_svs: str):
         """
         Compute and visualize the difference between attention maps for fine-tuned (ft) and pre-trained (pt) models.
 
@@ -173,7 +176,9 @@ class WSIVisualizer(WSI):
         # changed from returning attn_maps_diff to attn_maps_ft
         return attn_maps_ft[id_svs], name, row_ft['study'], attn_maps_ft[id_svs], attn_maps_pt[id_svs]
 
-    def plot_local_attention(self, attn_map3, vmin, vmax, pos_x, pos_y, region_size, magnification, annotation=None, save_fig=False, save_dir=""):
+    def plot_local_attention(self, attn_map3: np.ndarray, vmin, vmax, 
+                             pos_x: int, pos_y: int, region_size: int, magnification: float, 
+                             annotation: list = None, save_fig: bool = False, save_dir: str = ""):
         """
         Plots local attention map of a specified region
         
@@ -194,25 +199,32 @@ class WSIVisualizer(WSI):
         # selecting a specific potion of the attention map
         attn_clip = attn_map3[(max(0, pos_y)):(pos_y+region_size), (max(0,pos_x)):(pos_x+region_size)]
         region_name = f"r_{region_size}-m_{str(magnification)}-{pos_x}_{pos_y}"
+        print(f"Magnification in plot_local_attention function: {magnification}")
         tile = self.wsi.get_region(pos_x, pos_y, int(region_size*magnification/1.25), magnification, 1.25)
+
+        print(f"Size of tile: {tile.size}")
 
         
         # plotting selected tile extracted based on pos_x and pos_y
-        fig = plt.figure(figsize=(8,8))
-        plt.imshow(tile)
+        tile_height, tile_width = tile.shape[:2]
+        print(f"Tile Height and Width: ({tile_height}, {tile_width})")
+        # fig = plt.figure(figsize=(tile_width / 100, tile_height / 100))
+        fig = plt.figure(figsize=(8, 8))
+        plt.imshow(tile, aspect='equal')
         plt.axis('off')
         if save_fig:
             plt.savefig(save_dir + f"{region_name}-tile.svg",bbox_inches='tight',pad_inches = 0)
-            print(f"Saved figure at {save_dir} directory")
+            print(f"Saved tile figure at {save_dir} directory")
             plt.close()
         else:
             plt.show()
 
         # plotting attn_clip
-        fig = plt.figure(figsize=(8,8))
+        # fig = plt.figure(figsize=(tile_width / 100, tile_height / 100))
+        fig = plt.figure(figsize=(8, 8))
         ax1 = fig.add_axes((0,0,1,1), label='wsi')
         ax2 = fig.add_axes((0,0,1,1), label='attn')
-        ax1.imshow(attn_clip, vmin=vmin, vmax=vmax, alpha=1.0, cmap='coolwarm')
+        ax1.imshow(attn_clip, vmin=vmin, vmax=vmax, alpha=0.6, cmap='coolwarm')
         ax1.axis('off')        
         ax2.imshow(tile, alpha=0.5)
         ax2.axis('off')
@@ -223,7 +235,8 @@ class WSIVisualizer(WSI):
         else:
             for pos in annotation:
                 pos_x, pos_y, region_size = pos
-                rect = mp.Rectangle((pos_x,pos_y), region_size, region_size, linewidth=2, edgecolor='black', facecolor='none')
+                rect = mp.Rectangle((pos_x,pos_y), region_size, region_size, 
+                                    linewidth=2, edgecolor='black', facecolor='none')
                 ax2.add_patch(rect)     
         if save_fig:
             plt.savefig(save_dir + f"{region_name}-overlay.svg",bbox_inches='tight',pad_inches = 0)
@@ -232,7 +245,8 @@ class WSIVisualizer(WSI):
         else:
             plt.show()
 
-    def get_local_attention_overlay(self, save_dir, attn_map3, vmin, vmax, sel_region, sel_patch, save_fig=False):
+    def get_local_attention_overlay(self, save_dir: str, attn_map3: np.ndarray, vmin, vmax, 
+                                    sel_region: tuple, sel_patch: list, save_fig: bool = False):
         """
         Seems to repetitively plot local attention maps based on specified patch locations
 
@@ -263,15 +277,18 @@ class WSIVisualizer(WSI):
             self.plot_local_attention(attn_map3, vmin, vmax, pos_xp, pos_yp, region_size, magnification, save_fig=save_fig, save_dir=save_dir)
 
 
-    def complete_pipeline(self, save_fig=True, cl=0.2, ch=0.8, sel_region=None, sel_patch=None, alpha=0.3):
+    def complete_pipeline(self, save_fig: bool = True, cl: float = 0.2, ch: float = 0.8, sel_region: 
+                          tuple = None, sel_patch: list = None, alpha: float =0.1):
         """
-        Complete pipeline for visualizing the attention overlay on whole slide images, based on the attention map differences.
+        Complete pipeline for visualizing the attention overlay 
+        on whole slide images, based on the attention map differences.
 
         Parameters:
         - save_fig (bool): Flag indicating whether to save figures. Default is True.
         - cl, ch
         - sel_region (tuple): tuple of the form (pos_x, pos_y, region_size, magnification). Default is None.
-        - sel_patch (list, optional): List of tuples of the form (pos_x, pos_y, region_size, magnification). Default is None.
+        - sel_patch (list, optional): List of tuples of the form 
+        (pos_x, pos_y, region_size, magnification). Default is None.
         - alpha (float, optional): Transparency level for overlays on top of thumbnails. Default is 0.3.
 
         Returns:
@@ -319,7 +336,8 @@ class WSIVisualizer(WSI):
 
         if sel_region is not None:
             pos_x, pos_y, region_size,_ = sel_region
-            rect = mp.Rectangle((pos_x,pos_y), region_size, region_size, linewidth=2, edgecolor='black', facecolor='none')
+            rect = mp.Rectangle((pos_x,pos_y), region_size, region_size, 
+                                linewidth=2, edgecolor='black', facecolor='none')
             ax2.add_patch(rect)
         
         if save_fig:
@@ -348,19 +366,24 @@ class WSIVisualizer(WSI):
             plt.show()
         
         if sel_region is not None and sel_patch is not None:
-            self.get_local_attention_overlay(save_dir, attn_map3, vmin, vmax, sel_region=sel_region, sel_patch=sel_patch, save_fig=save_fig)
+            self.get_local_attention_overlay(save_dir, attn_map3, vmin, 
+                                             vmax, sel_region=sel_region, sel_patch=sel_patch, save_fig=save_fig)
 
         return attn_map3, thumbnail2
 
-    def get_attention_map(self, attn_map, patch_i = -1):
+    def get_attention_map(self, attn_map: np.ndarray, patch_i: int = -1) -> np.ndarray:
         # changed from .view(20, 20) to .view(10, 10) to accomodate for 100 input size
         mask = attn_map[patch_i+1,1:].view(10,10)
         n = (mask > 0).sum()
         return mask*n
 
-    def compress_global_attention(self, model_name, epoch, layers_i = 'None', head_i = 'None', plot_result=False):
+    def compress_global_attention(self, model_name: str, epoch: int, 
+                                  layers_i = 'None', head_i = 'None', plot_result: bool = False) -> None:
         '''
         Saves plots of attention maps for a given model on a specified SVS WSI
+
+        Args:
+
         '''
         df = pd.read_pickle(f"features/{model_name}/{layers_i}-{head_i}/{epoch}/meta.pickle")
         svs_ids = df.id_svs.unique().tolist()
@@ -372,7 +395,7 @@ class WSIVisualizer(WSI):
         thumbnails = {}
         pattern = f"features/{model_name}/{layers_i}-{head_i}/{epoch}/*.pickle"
         files = glob.glob(pattern)
-        for fname in tqdm.tqdm(files):
+        for fname in tqdm(files):
             if os.path.basename(fname) == 'meta.pickle':
                 continue
             with open(fname, 'rb') as f:
@@ -445,21 +468,22 @@ if __name__ == '__main__':
     meta_dict = [
         {
             "order": 0,
-            "name": "TCGA_pretrained",
+            "name": "IBD_pretrained",
             "study": 'IBD_PROJECT',
-            "model_name": "-pretrained_20x_448_resnet34",
-            "epoch": "0500",
+            "model_name": "-2023_5_30-4",
+            "epoch": "0023",
             "svs_dir": "svs_2019"
         },
 
         {
             "order": 1,
-            "name": "IBD_classification",
+            "name": "IBD_finetuned",
             "study": 'IBD_PROJECT',
-            "model_name": "-2023_5_30-2",
-            "epoch": "0007",
+            "model_name": "-2023_5_30_new-0",
+            "epoch": "0037",
             "svs_dir": "svs_2019"
         }
     ]
 
-    wsi_visual = WSIVisualizer(meta_dict, svs_id=4, id_ft=1, id_pt=0, config_file = config, complete_pipeline=True)
+    wsi_visual = WSIVisualizer(meta_dict, svs_id=3, id_ft=1, id_pt=0, 
+                               config_file = config, complete_pipeline=True)
