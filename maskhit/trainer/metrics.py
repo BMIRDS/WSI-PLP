@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 from lifelines.utils import concordance_index
-from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.metrics import roc_auc_score, f1_score, mean_absolute_error, mean_squared_error, r2_score
 from scipy.special import softmax
 
 
@@ -34,9 +34,11 @@ def find_confident_instance(preds):
 
 
 def calculate_metrics(ids, preds, targets, outcome_type='survival'):
+    #TODO: Should support all the outcome_types, or should raise error if a provided type is not available.
+    #Can we create a class with the logics and feed the object, instead of implementing the logic here.
+    df = pd.DataFrame(np.concatenate([ids, preds, targets], axis=1))
 
     if outcome_type == 'survival':
-        df = pd.DataFrame(np.concatenate([ids, targets, preds], axis=1))
         df.columns = ['id', 'time', 'event', 'pred']
         df = df.groupby('id').mean()
         c = c_index(df.time, -df.pred, df.event)
@@ -82,6 +84,21 @@ def calculate_metrics(ids, preds, targets, outcome_type='survival'):
         res = {'f1': f1, 'auc': auc}
 
         return res
+
+    elif outcome_type == 'regression':
+        df.columns = ['id', 'pred', 'target']
+        grouped = df.groupby('id').mean()  # Assuming averaging is the desired approach
+
+        mae = mean_absolute_error(grouped['target'], grouped['pred'])
+        mse = mean_squared_error(grouped['target'], grouped['pred'])
+        r2 = r2_score(grouped['target'], grouped['pred'])
+
+        res = {'MAE': mae, 'MSE': mse, 'r2': r2}
+        return res
+
+    else:
+        raise ValueError(f"Unsupported outcome type: {outcome_type}")
+
 
 
 class ModelEvaluation(object):

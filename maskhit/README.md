@@ -1,4 +1,6 @@
-# Prepare the datasets to be used for this repo: see WSI_PreProcess
+
+
+# Prepare the datasets to be used for this repo: see SlidePreprocessing/MaskHIT_Prep
 The following items should be presented in this repo:
 * data folder: contains the preprocessed feature vectors
     - features of patches from one entire svs is stored as one .pt file, one row per one patch
