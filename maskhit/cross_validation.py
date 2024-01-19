@@ -1,9 +1,7 @@
 '''
-Use this script to run 5 fold cross-validation
+Use this script to run cross-validation
 
-Example Usage: CUDA_VISIBLE_DEVICES=5 python cross_validation.py --study-name "ibd_project" 
-            --timestr-model "2023_5_30" --user-config-file "configs/config_ibd_train.yml" 
-            --default-config-file "configs/config_default.yaml"
+Example Usage: CUDA_VISIBLE_DEVICES=8 python cross_validation.py --user-config-file "configs/config_ibd_train.yml" --default-config-file "configs/config_default.yaml" --folds 0
 '''
 
 import sys
@@ -17,14 +15,6 @@ opt = TrainOptions()
 opt.initialize()
 
 opt.parser.add_argument(
-        "--study-name", 
-        type=str,
-        help="name of the project.")
-opt.parser.add_argument(
-        "--timestr-model", 
-        type=str,
-        help="date and time of model training")
-opt.parser.add_argument(
         "--default-config-file", 
         type=str,
         default='configs/config_default.yaml',
@@ -33,30 +23,38 @@ opt.parser.add_argument(
         "--user-config-file", 
         type=str,
         help="Path to the user-defined configuration file.")
+opt.parser.add_argument(
+        "--folds",
+        type=str,
+        default=None,
+        help="Optional list of folds for cross-validation.")
 
 args = opt.parse()
-print(f"timestr: {args.study_name}")
 
-study = args.study_name
-timestr = args.timestr_model
 config_file = args.user_config_file
 config_file_default = args.default_config_file
+folds = [int(i) for i in args.folds.split(',')] if args.folds else list(range(config.dataset.num_folds))
+print(f"Testing on folds: {list(folds)}")
 
 # args_config = default_options()
 print(f"config_file: {config_file}")
 config = Config(config_file_default, config_file)
+folds = [int(i) for i in args.folds.split(',')] if args.folds else list(range(config.dataset.num_folds))
+print(f"Testing on folds: {list(folds)}")
+study = config.dataset.study
+timestr = config.dataset.timestr_model
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-
 # model training
 def batch_train():
-    for i in range(config.dataset.num_folds):
+    args_global = opt.parse()
+    for i in folds:
         args = [
             'python train.py',
             '--user-config-file', f'{config_file}',
             '--default-config-file', f'{config_file_default}',
-            f'--timestr={timestr}'
+            f'--timestr={timestr}', f'--mil1={args_global.mil1}'
         ]
         
         new_cmd = ' '.join(args + [f'--fold={i}'])

@@ -16,6 +16,7 @@ import math
 import pickle
 import numpy as np
 from utils.config import Config
+from pathlib import Path
 
 from maskhit.model.models import HybridModel
 from maskhit.trainer.losses import ContrasiveLoss
@@ -43,6 +44,7 @@ def format_results(res):
 def unpack_sample(sample, regions_per_patient, svs_per_patient, device):
     imgs, ids, targets, pos, pos_tile, tiles, pct_valid = list(
         map(lambda x: sample[x], [0, 1, 2, 3, 4, 5, 6]))
+    
     imgs, ids, targets, pos, pos_tile, tiles, pct_valid = \
         imgs.to(device, non_blocking=True), \
         ids.to(device, non_blocking=True), \
@@ -67,6 +69,7 @@ def unpack_sample(sample, regions_per_patient, svs_per_patient, device):
         "regions_per_patient": regions_per_patient,
         "ids_of_sample": ids_of_sample.view(-1, 1)
     }
+
     return sample
 
 
@@ -140,6 +143,9 @@ class HybridFitter:
         if not os.path.isfile(self.checkpoint_to_resume):
             return
 
+        # load checkpoint weights and update model and optimizer
+        # print architecture, tensor size of each layer, and number of trainable parameters
+        # check for architectural difference
         ckp = torch.load(
             self.checkpoint_to_resume,
             map_location='cuda:0')
@@ -189,18 +195,22 @@ class HybridFitter:
                 self.scheduler.load_state_dict(scheduler_ckp)
 
     def prepare_datasets(self, pickle_file, mode='train'):
+        # converts argument to dataframe if it is not already a dataframe
         if isinstance(pickle_file, str):
             _df = pd.read_pickle(pickle_file)
         else:
             _df = pickle_file
 
+        # retreiving repeats_per_epoch (e.g. 4) and svs_per_patient (e.g. 1)
         repeats_per_epoch = self.args.mode_ops[mode]['repeats_per_epoch']
         svs_per_patient = self.args.mode_ops[mode]['svs_per_patient']
 
+        # in the case of sample_patient, group_var is set to 'id_patient'
         group_var = 'id_svs' if self.args.sample_svs else 'id_patient'
 
         if mode != 'train' and self.config.dataset.outcome_type != 'mlm':
             self.meta_df[mode] = _df
+
 
         elif self.config.model.sample_patient or self.args.sample_svs:
             res = []
@@ -229,6 +239,7 @@ class HybridFitter:
 
     def get_datasets(self, pickle_file, mode='train'):
         transform = get_data_transforms()[mode]
+
         ds = SlidesDataset(data_file=pickle_file,
                            outcomes=self.args.outcomes,
                            writer=self.writer,
@@ -312,10 +323,19 @@ class HybridFitter:
                 total_epoch=self.args.warmup_epochs,
                 after_scheduler=base_scheduler)
 
-    def train(self, df_train=None, epoch=0):
+
+    def train(self, df_train=None, epoch=0, accumulation_steps=1):
+        
+        # determining the accumulation steps from the config file
+        # for accumulating gradients
+        if hasattr(self.config.model, 'accumulation_steps'):
+            accumulation_steps = self.config.model.accumulation_steps
+        
+        print(f"Total Accumulation Steps: {accumulation_steps}")
+        
         regions_per_patient = self.args.mode_ops['train']['regions_per_patient']
         svs_per_patient = self.args.mode_ops['train']['svs_per_patient']
-        # print("Preparing training data ...")
+
         self.prepare_datasets(df_train, 'train')
         self.get_datasets(self.meta_df['train'], mode='train')
 
@@ -338,17 +358,18 @@ class HybridFitter:
             tracked_items = [batch_time, data_time, losses0, perfs]
 
         progress = ProgressMeter(len(self.dataloaders['train']),
-                                 tracked_items,
-                                 prefix="Epoch: [{}]".format(epoch),
-                                 writer=self.writer['meta'],
-                                 verbose=True)
+                                tracked_items,
+                                prefix="Epoch: [{}]".format(epoch),
+                                writer=self.writer['meta'],
+                                verbose=True)
         end = time.time()
 
         eval_t = ModelEvaluation(outcome_type=self.config.dataset.outcome_type,
-                                 loss_function=self.criterion,
-                                 mode='train',
-                                 device=self.device,
-                                 timestr=self.timestr)
+                                loss_function=self.criterion,
+                                mode='train',
+                                device=self.device,
+                                timestr=self.timestr,
+                                config_file = self.config)
 
         self.writer['meta'].info('-' * 30)
 
@@ -365,19 +386,24 @@ class HybridFitter:
 
             # forward and backprop
             self.optimizer.zero_grad()
-            with torch.set_grad_enabled(True):
-                outputs = self.model(batch_inputs)
-                preds = outputs['out']
-                attn_loss_seq, attn_loss_cls = self.loss_fn(outputs)
-                loss = self.criterion.calculate(outputs['out'], targets)
-                loss += attn_loss_seq
-                loss += attn_loss_cls
-                if torch.isnan(loss):
-                    print('null loss', attn_loss_cls, attn_loss_seq)
-                    continue
+            for j in range(accumulation_steps):
+                with torch.set_grad_enabled(True):
+                    outputs = self.model(batch_inputs)
+                    preds = outputs['out']
+                    attn_loss_seq, attn_loss_cls = self.loss_fn(outputs)
+                    loss = self.criterion.calculate(outputs['out'], targets)
+                    loss += attn_loss_seq
+                    loss += attn_loss_cls
+                    if torch.isnan(loss):
+                        print('null loss', attn_loss_cls, attn_loss_seq)
+                        continue
 
-            loss.backward()
-            self.optimizer.step()
+                loss = loss / accumulation_steps  # Normalize our loss (if averaged)
+                loss.backward()  # Backward pass
+                    
+                if (i+1) % accumulation_steps == 0:  # Wait for several backward steps
+                    self.optimizer.step()  # Now we can do an optimizer step
+                    self.optimizer.zero_grad()  # Reset gradients tensors
 
             if self.config.dataset.outcome_type == 'mlm':
                 pass
@@ -397,11 +423,12 @@ class HybridFitter:
             if self.config.dataset.outcome_type == 'mlm':
                 metrics = {'loss': 0}
             else:
+                label_classes = self.config.dataset.classes.split(',')
                 metrics = calculate_metrics(
                     ids=batch_inputs['ids_of_sample'].cpu().numpy(),
                     preds=preds.data.cpu().numpy(),
                     targets=targets.data.cpu().numpy(),
-                    outcome_type=self.config.dataset.outcome_type)
+                    outcome_type=self.config.dataset.outcome_type, label_classes = label_classes)
             perfs.update(metrics[self.metric], num_samples)
 
             # measure elapsed time
@@ -423,7 +450,8 @@ class HybridFitter:
         res['mode'] = 'train'
         return res
 
-    def evaluate(self, df_val, epoch=0):
+    def evaluate(self, df_val, epoch=0, mode = ''):
+        df_val.to_csv('fold_0.csv', index=False) 
         regions_per_patient = self.args.mode_ops['val']['regions_per_patient']
         svs_per_patient = self.args.mode_ops['val']['svs_per_patient']
 
@@ -438,7 +466,8 @@ class HybridFitter:
                                  loss_function=self.criterion,
                                  mode='val',
                                  device=self.device,
-                                 timestr=self.timestr)
+                                 timestr=self.timestr,
+                                 config_file = self.config)
 
         # forward prop over all validation data
         losses0 = 0
@@ -476,9 +505,9 @@ class HybridFitter:
                 'loss_pt2': losses2 / counts
             }
         else:
-            res = eval_v.evaluate()
-            pred_file = f"predictions/{self.model_name}-predictions.csv"
-            os.makedirs(os.path.dirname(pred_file), exist_ok=True)
+            res = eval_v.evaluate(mode)
+            pred_file = Path(f"predictions/{self.model_name}-predictions.csv")
+            pred_file.parent.mkdir(parents=True, exist_ok=True)
             eval_v.save(pred_file)
 
         res['epoch'] = epoch
@@ -486,14 +515,19 @@ class HybridFitter:
         return res
 
     def fit_epoch(self, data_dict, epoch=0):
-        print(self.model_name)
+        """
+        Args:
+            data_dict: a dictionary containing the training and validation dataframes
+            epoch: current epoch
+        Returns:
+            0 if no early stopping is triggered, 1 if early stopping is triggered
+        """
+        print(f"Model Name: {self.model_name}")
         if epoch == 1:
             self.scheduler.step()
 
-        # print("Start the training epoch ....")
         train_res = self.train(data_dict['train'], epoch=epoch)
-        # print("Start the evaluation epoch ....")
-        val_res = self.evaluate(data_dict['val'], epoch=epoch)
+        val_res = self.evaluate(data_dict['val'], epoch=epoch, mode = 'test')
 
         self.writer['data'].info(format_results(train_res))
         self.writer['data'].info(format_results(val_res))
@@ -505,7 +539,7 @@ class HybridFitter:
         if self.config.dataset.outcome_type == 'survival':
             performance_measure = torch.tensor(val_res['c-index'])
         elif self.config.dataset.outcome_type == 'classification':
-            performance_measure = torch.tensor(val_res['auc'])
+            performance_measure = torch.tensor(val_res[self.config.model.performance_measure])
         elif self.config.dataset.outcome_type == 'regression':
             performance_measure = torch.tensor(val_res['r2'])
         elif self.config.dataset.outcome_type == 'mlm':
@@ -541,16 +575,19 @@ class HybridFitter:
         self.prepare_datasets(df_val, 'predict')
         self.get_datasets(self.meta_df['predict'], 'predict')
 
+
+
         # validation phase
         self.model.eval()
         self.loss_fn.eval()
 
         # forward prop over all validation data
-        counts = 0
         for i, sample in enumerate(tqdm.tqdm(self.dataloaders['predict'])):
+            print(f"At index: {i}")
+            print(f"regions_per_patient: {regions_per_patient}")
+            print(f"svs_per_patient: {svs_per_patient}")
             batch_inputs = unpack_sample(sample, regions_per_patient, svs_per_patient, self.device)
 
-            # forward
             with torch.set_grad_enabled(False):
                 outputs= self.model(batch_inputs)
 
@@ -610,7 +647,12 @@ class HybridFitter:
         for arg, value in sorted(vars(self.args).items()):
             self.writer['meta'].info("Argument %s: %r", arg, value)
 
-    def fit(self, data_dict, procedure='train'):     
+    def fit(self, data_dict, procedure='train'):
+        """
+        Args:
+            data_dict: a dictionary containing the training and validation dataframes
+            procedure: 'train' or 'test'
+        """
         if torch.cuda.is_available():
             self.device = torch.device('cuda:0')
         else:
@@ -623,12 +665,15 @@ class HybridFitter:
             'regression': 'r2',
             'mlm': 'loss'
         }
+
+        # will choose metric based on outcome_type, e.g. auc for classification
         self.metric = metrics[self.config.dataset.outcome_type]
 
         self.es = EarlyStopping(patience=self.args.patience, mode='max')
 
         self.get_logger()
 
+        # creating an instance of the model
         model = HybridModel(in_dim=self.args.num_features,
                             out_dim=self.num_classes,
                             dropout=self.config.model.dropout,
@@ -639,6 +684,7 @@ class HybridFitter:
         if not torch.cuda.is_available():
             print('using CPU, this will be slow')
         else:
+            # parallel processing on GPUs
             model = _CustomDataParallel(model).cuda()
             self.loss_fn.cuda()
 
@@ -647,7 +693,6 @@ class HybridFitter:
         self.resume_checkpoint()
 
         if procedure == 'train':
-            # print("start training ... ")
             for epoch in range(self.current_epoch, self.args.epochs + 1):
                 return_code = self.fit_epoch(data_dict, epoch=epoch)
                 if return_code:
@@ -655,7 +700,7 @@ class HybridFitter:
         elif procedure == 'test':
             res = []
             for i in range(self.args.num_repeats):
-                info_str = self.evaluate(data_dict['val'], epoch=0)
+                info_str = self.evaluate(data_dict['val'], epoch=0, mode = 'test')
                 self.writer['meta'].info(info_str)
                 res.append(info_str)
 
@@ -668,8 +713,13 @@ class HybridFitter:
             self.writer['data'].info(df_sum.to_csv())
 
         elif procedure == 'extract':
+            print("Called in the extract mode")
             save_loc = f"features/{self.args.vis_spec}/{self.args.cancer}/{self.epoch:04d}/meta.pickle"
+            print(f"save_loc: {save_loc}")
             os.makedirs(os.path.dirname(save_loc), exist_ok=True)
             data_dict['val'].to_pickle(save_loc)
             print('=' * 30)
+            print("Prining the data_dict[val] keys")
+            print(data_dict['val'].keys())
             self.extract_features(data_dict['val'])
+

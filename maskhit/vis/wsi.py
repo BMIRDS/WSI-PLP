@@ -1,5 +1,7 @@
 import openslide
 import numpy as np
+import pandas as pd
+from skimage.util.shape import view_as_windows
 
 
 class WSI:
@@ -48,3 +50,50 @@ class WSI:
                 return max(i - 1, 0)
 
         return len(levels) - 1
+    
+    def get_correct_thumbnail(wsi, mag_mask = 1.25):
+        thumbnail = wsi.downsample(mag_mask)
+        return thumbnail
+
+    def crop_prop_img(img, mag_mask = 1.25):
+        size_y, size_x, _ = img.shape
+        # changed from 10 to 20 (could be related to magnification)
+        down_scale = 20/mag_mask/224
+        max_x, max_y = int(size_x*down_scale), int(size_y*down_scale)
+        new_y, new_x = int(max_x/down_scale), int(max_y/down_scale)
+        img = img[:new_x, :new_y, :]
+        return img, (max_x, max_y), (new_x, new_y)
+
+    def is_purple_dot(r, g, b):
+        """
+        Determines if a pixel is of a purple
+        """
+        rb_avg = (r + b) / 2
+        if r > g - 20 and b > g - 20 and rb_avg > g + 10:
+            return True
+        return False
+
+    def is_purple(crop):
+        """
+        Determines if there's any purple pixel within a 2x2 cropped image section.
+        """
+        crop = crop.reshape(2,2,3)
+        for x in range(crop.shape[0]):
+            for y in range(crop.shape[1]):
+                r = crop[x, y, 0]
+                g = crop[x, y, 1]
+                b = crop[x, y, 2]
+                if WSI.is_purple_dot(r, g, b):
+                    return True
+        return False
+
+    def filter_purple(img):
+        """
+        Creates a binary mask for img where purple pixels are 1 and non-purple pixels are 0
+        """
+        h,w,d = img.shape
+        step = 2
+        img_padding = np.zeros((h+step-1,w+step-1,d))
+        img_padding[:h,:w,:d] = img
+        img_scaled = view_as_windows(img_padding, (step,step,3), 1)
+        return np.apply_along_axis(WSI.is_purple, -1, img_scaled.reshape(h,w,-1)).astype(int)

@@ -2,7 +2,6 @@ from .base_options import BaseOptions
 """Argument Parser for Training Parameters
 """
 
-
 class TrainOptions(BaseOptions):
 
     def initialize(self):
@@ -21,10 +20,7 @@ class TrainOptions(BaseOptions):
                                  type=int,
                                  default=512,
                                  help='dimension of patch features')
-        self.parser.add_argument('--dropout',
-                                 type=float,
-                                 default=0,
-                                 help='dropout rate')
+
 
         # experiments key options
         self.parser.add_argument('-m',
@@ -33,24 +29,18 @@ class TrainOptions(BaseOptions):
                                  default='train',
                                  help='mode, train or predict or test')
         self.parser.add_argument('--test-type', type=str, default='val')
-        self.parser.add_argument('--study',
-                                 type=str,
-                                 default=None,
-                                 help="log files will be saved to logs/<study>/")
+
         self.parser.add_argument('--timestr',
                                  type=str,
                                  default='',
                                  help='time stamp of the model')
+
         self.parser.add_argument('--preset',
                                  type=str,
                                  default='',
                                  help='NOT IMPLEMENTED: pre-set mode')
 
         # specify dataset to use
-        self.parser.add_argument('--meta-svs',
-                                 type=str,
-                                 default=None,
-                                 help='meta file for svs files')
         self.parser.add_argument('--meta-train',
                                  type=str,
                                  default=None,
@@ -59,10 +49,6 @@ class TrainOptions(BaseOptions):
                                  type=str,
                                  default=None,
                                  help='meta file for val split')
-        self.parser.add_argument('--meta-all',
-                                 type=str,
-                                 default=None,
-                                 help='meta contains both train and validation, override meta_train and meta_val')
         self.parser.add_argument('--cancer',
                                  type=str,
                                  default='',
@@ -71,10 +57,6 @@ class TrainOptions(BaseOptions):
                                  type=int,
                                  default=0,
                                  help='cross validation fold')
-        self.parser.add_argument('--magnification',
-                                 type=int,
-                                 default=10,
-                                 help='magnification')
         self.parser.add_argument('--patch-size',
                                  type=int,
                                  default=224,
@@ -95,50 +77,38 @@ class TrainOptions(BaseOptions):
                                  action='store_true',
                                  default=False,
                                  help='exclude ffpe slides')
-        self.parser.add_argument('--regions-per-svs',
-                                 type=int,
-                                 default=1,
-                                 help='number of svs sampled in sample-patient mode')
+
         self.parser.add_argument('--regions-per-svs-val',
                                  type=int,
-                                 default=None,
-                                 help='number of svs sampled in sample-patient mode when validation/testing')
+                                 default=175,
+                                 help='number of svs sampled in sample-patient mode when validation/testing \
+                                    if overfitting problem, make sure regions-per-svs-val is more than regions-per-svs')
         self.parser.add_argument('--data',
                                  type=str,
                                  default='data',
                                  help='location of data root folder')
 
-        # outcome infomation
-        self.parser.add_argument('--outcome',
-                                 type=str,
-                                 default='status',
-                                 help='name of the outcome variable')
         self.parser.add_argument('--outcome-type',
                                  type=str,
-                                 default='survival',
+                                 default='classification',
                                  help='outcome type, choose from \
                                 "survival", "classification", "regression", "mlm"')
-        self.parser.add_argument('--weighted-loss',
-                                 action='store_true',
-                                 default=False,
-                                 help="HASN'T TESTED: whether to use a weighted loss function for imbalanced classification")
+
 
         # sample selection
         self.parser.add_argument('--region-size',
                                  type=int,
-                                 default=4480,
+                                 default=2240,
                                  help='size of tile region sampled from svs, \
                                      if none then sample from entire svs. \
                                      Unit: pixels')
-        self.parser.add_argument('--num-patches',
-                                 type=int,
-                                 default=0,
-                                 help='number of patches from each region. If 0 will sample all patches')
         self.parser.add_argument('--num-patches-val',
                                  type=int,
-                                 default=None,
+                                 default=100,
                                  help=
-                                 'number of patches from each region at validation time')
+                                 'number of patches from each region at validation time \
+                                    should be larger than number of patches used for training \
+                                        to prevent overfitting')
         self.parser.add_argument('--sample-all',
                                  action='store_true',
                                  default=False,
@@ -146,7 +116,7 @@ class TrainOptions(BaseOptions):
                                 whole slide image sequentially')
         self.parser.add_argument('--sampling-threshold',
                                  type=int,
-                                 default=100,
+                                 default=10,
                                  help='threshold when selecting tiles')
         self.parser.add_argument('--svs-per-patient',
                                  type=int,
@@ -154,12 +124,8 @@ class TrainOptions(BaseOptions):
                                  help='how many svs to select from one sample during each iteration')
         self.parser.add_argument('--repeats-per-epoch',
                                  type=int,
-                                 default=4,
+                                 default=4, 
                                  help='how many times to select one sample during each epoch')
-        self.parser.add_argument('--sample-patient',
-                                 action='store_true',
-                                 default=False,
-                                 help='sample by patient')
         self.parser.add_argument('--sample-svs',
                                  action='store_true',
                                  default=False,
@@ -168,8 +134,6 @@ class TrainOptions(BaseOptions):
                                  type=int,
                                  default=10,
                                  help='grid size for sampling regions from whole slide. Unit: patches')
-
-
 
         # vit model specific parameters
         self.parser.add_argument('--avg-cls',
@@ -200,18 +164,14 @@ class TrainOptions(BaseOptions):
                                  help='location to cluster centers')
 
         # training schedule
-        self.parser.add_argument('-b',
-                                 '--batch-size',
-                                 type=int,
-                                 default=8,
-                                 help='batch size')
+
         self.parser.add_argument('--epochs',
                                  type=int,
-                                 default=100,
+                                 default=50,
                                  help='total number of epochs to train the model')
         self.parser.add_argument('--warmup-epochs',
                                  type=int,
-                                 default=0,
+                                 default=5,
                                  help='total number of epochs to train the model')
         self.parser.add_argument('--patience',
                                  type=int,
@@ -219,11 +179,11 @@ class TrainOptions(BaseOptions):
                                  help='break the training after how number of epochs of no improvement')
         self.parser.add_argument('--anneal-freq',
                                  type=int,
-                                 default=50,
+                                 default=15, 
                                  help='CosineAnnealingWarmRestarts: anneal frequency')
         self.parser.add_argument('--t-mult',
                                  type=int,
-                                 default=2,
+                                 default=2, 
                                  help='CosineAnnealingWarmRestarts: A factor increases Ti after a restart')
 
         # specify optimizer
@@ -231,18 +191,7 @@ class TrainOptions(BaseOptions):
                                  type=str,
                                  default='adamw',
                                  help='optimizer, choose from "adam","adamw",""')
-        self.parser.add_argument('--lr-attn',
-                                 type=float,
-                                 default=1e-5,
-                                 help='learning rate for the attn part')
-        self.parser.add_argument('--lr-pred',
-                                 type=float,
-                                 default=1e-5,
-                                 help='learning rate for the pred part')
-        self.parser.add_argument('--lr-loss',
-                                 type=float,
-                                 default=1e-5,
-                                 help='learning rate for the mlm loss part')
+
         self.parser.add_argument('--lr-fuse',
                                  type=float,
                                  default=1e-5,
@@ -253,22 +202,11 @@ class TrainOptions(BaseOptions):
                                  help='learning rate, if not none then will override all other learning rates')
 
         # weight decay
-        self.parser.add_argument('--wd-attn',
-                                 type=float,
-                                 default=0.0001,
-                                 help='intensity of the weight decay for the attn model')
         self.parser.add_argument('--wd-pred',
                                  type=float,
-                                 default=1e-5,
+                                 default=0,
                                  help='intensity of the weight decay for the pred model')
-        self.parser.add_argument('--wd-loss',
-                                 type=float,
-                                 default=0.0001,
-                                 help='intensity of the weight decay for the attn model')
-        self.parser.add_argument('--wd-fuse',
-                                 type=float,
-                                 default=1e-5,
-                                 help='intensity of the weight decay for the pred model')
+        
         self.parser.add_argument('--wd',
                                  type=float,
                                  default=None,
@@ -298,12 +236,8 @@ class TrainOptions(BaseOptions):
         # resume from checkpoint
         self.parser.add_argument('--resume',
                                  type=str,
-                                 default='',
-                                 help='name of the model to be resumed')
-        self.parser.add_argument('--resume-epoch',
-                                 type=str,
-                                 default='LAST',
-                                 help='epoch of the model to be resumed')
+                                 default='')
+        
         self.parser.add_argument('--resume-train',
                                  action='store_true',
                                  default=False,
@@ -316,7 +250,7 @@ class TrainOptions(BaseOptions):
                                  help='If true then resume the previous optim scheduler')
         self.parser.add_argument('--resume-fuzzy',
                                  action='store_true',
-                                 default=False,
+                                 default=True,
                                  help='turn off strict mode')
 
         # patch region masking
@@ -326,8 +260,11 @@ class TrainOptions(BaseOptions):
                                  help='mask probability in BERT')
         self.parser.add_argument('--prop-mask',
                                  type=str,
-                                 default='0,1,0',
-                                 help='proportion for masking tokens, masked:original:random')
+                                 default='0, 1, 0',
+                                 help='proportion for masking tokens; used in constructor \
+                                    of MaskingGenerator class, masked:original:random. Masked represents \
+                                        proportion of patches of WSI not seen to the model during training \
+                                            and that the model must predict')
         self.parser.add_argument('--block-min',
                                  type=int,
                                  default=1,
@@ -361,7 +298,7 @@ class TrainOptions(BaseOptions):
         # experiment optional options
         self.parser.add_argument('--checkpoints-folder',
                                  type=str,
-                                 default='checkpoints',
+                                 default='checkpoints_new',
                                  help='path to the checkpoints folder')
         self.parser.add_argument('--log-freq',
                                  type=int,
@@ -375,10 +312,6 @@ class TrainOptions(BaseOptions):
                                  action='store_true',
                                  default=False,
                                  help='not save checkpoint')
-        self.parser.add_argument('--override-logs',
-                                 action='store_true',
-                                 default=False,
-                                 help='override logs')
         self.parser.add_argument('--notes',
                                  type=str,
                                  default='',

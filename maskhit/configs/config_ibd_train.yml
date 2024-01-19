@@ -1,22 +1,47 @@
 dataset:
-  meta_svs: !!str ../../../SlidePreprocessing/for_vit/meta/IBD_PROJECT/svs_meta.pickle
-  meta_all: !!str ../../../SlidePreprocessing/for_vit/meta/ibd_project_meta.pickle
-  outcome: !!str "Dx (U=UC, C=Cr, I=Ind)"
+  # FOR TRAINING
+  meta_svs: !!str meta/IBD_PROJECT/svs_meta.pickle
+  meta_all: !!str meta/ibd_project_meta.pickle
+
+  # FOR VISUALIZATION
+  # meta_svs: !!str meta/vis_ibd_project_locs-split.pickle
+  # meta_all: !!str meta/vis_ibd_project_meta-split.pickle
+
+  timestr_model: !!str 2023_5_30_new
+  outcome: !!str Diagnosis
   outcome_type: !!str classification
   study: !!str ibd_project
   is_cancer: !!bool False
   disease: !!str IBD_PROJECT
+  classes: !!str Inactive, Mild, Moderate, Severe
 
 patch:
-  num_patches: !!int 0
-  magnification: !!int 5
-  wd: !!float 0.01
+  num_patches: !!int 10 # used region size and grid size to determine this value
+  magnification: !!float 20
 
 model:
   weighted_loss: !!bool True
-  lr: !!float 1e-5
+  resume: !!str 2023_5_30_new-0 # 2023_5_30-4
+  resume_epoch: !!str BEST
+
+  regions_per_svs: !!int 4 # adjusted using get_region_info.py script
+  
+  # Weight Decays
+  wd_attn: !!float 1e-3
+  wd_fuse: !!float 1e-2 # changed from 1e-3 to 1e-2
+  wd_loss: !!float 1e-2 # changed from 1e-3 to 1e-2
+  wd_pred: !!float 0.002
+  
+  # Learning Rates
+  lr_attn: !!float 1e-5 # lowered since we are using pre-trained model
+  lr_fuse: !!float 1e-4
+  lr_loss: !!float 1e-4
+  lr_pred: !!float 7e-4
+
+  performance_measure: !!str f1
+
+  accumulation_steps: !!int 1
   dropout: !!float 0.2
-  batch_size: !!int 16
-  fold: !!int 0
+  batch_size: !!int 16 # for visualization (64)
   override_logs: !!bool True
   sample_patient: !!bool True
