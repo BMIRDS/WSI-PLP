@@ -36,7 +36,10 @@ df_svs = pd.read_pickle(args.svs_file)
 sel_ids = args.ids
 
 df_svs = df_svs.loc[df_svs.id_svs.isin(sel_ids)]
-df_meta = df_meta.loc[df_meta.case_number.apply(lambda entry: entry.split('.')[0]).isin(df_svs.id_svs)]
+
+fn_extract_prefix = lambda x: x.split('.')[0]
+ids_selected = df_meta.case_number.apply(fn_extract_prefix)
+df_meta = df_meta.loc[ids_selected.isin(df_svs.id_svs)]
 
 res = []
 for i, row in df_svs.iterrows():
@@ -59,7 +62,12 @@ df_locs = pd.concat(res)
 df_locs['slide_type'] = 'ffpe'
 df_locs['cancer'] = study
 
-df_meta.merge(df_locs[['case_number','svs_path','id_svs']].drop_duplicates('id_svs'), on='case_number')
+# try merging on id_patient if possible. If not try merging on case_number
+try:
+    df_merged = df_meta.merge(df_locs[['id_patient', 'svs_path', 'id_svs']].drop_duplicates('id_svs'), on='id_patient')
+except KeyError:
+    df_merged = df_meta.merge(df_locs[['case_number', 'svs_path', 'id_svs']].drop_duplicates('id_svs'), on='case_number')
+
 
 df_locs.to_pickle(f'meta/vis_{study.lower()}_locs-split.pickle') # stores location of patches extracted from specified WSIs 
 df_meta.to_pickle(f'meta/vis_{study.lower()}_meta-split.pickle') # stores meta information of WSIs

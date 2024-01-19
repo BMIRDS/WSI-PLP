@@ -135,7 +135,7 @@ def calculate_metrics(ids, preds, targets, label_classes, outcome_type='survival
                                                       dim=1),
                                         multi_class='ovr')
                     
-                    if mode == 'test' or mode == 'val':
+                    if mode in ['test', 'val']:
                         # displaying confusion matrix
                         cm = confusion_matrix(targets, preds.argmax(axis = 1))
                         show_confusion_matrix(cm = cm, label_classes = label_classes)

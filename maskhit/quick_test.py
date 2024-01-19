@@ -11,6 +11,7 @@ import os
 import glob
 from utils.config import Config
 from pathlib import Path
+import re
 
 study = sys.argv[1]
 timestr = sys.argv[2]
@@ -40,8 +41,8 @@ for i, log_file in enumerate(files):
     ckp = log_file_path.stem.replace('_meta', '')
 
     # filter out the original timestr
-    if '--timestr=2023_5_30_new' in org_cmd:
-        org_cmd = org_cmd.replace("--timestr=2023_5_30_new", "")
+    pattern = r'--timestr=[^\s]+'
+    org_cmd = re.sub(pattern, '', org_cmd)
 
     timestr_new += '-test'
     new_cmd = ' '.join([
