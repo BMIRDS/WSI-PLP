@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
-# $ python setup.py develop
+# $ python setup_maskhit.py develop
 
 setup(
-   name='maskhit',
+   name='MaskHIT',
    version='1.0',
    description='MaskHIT',
    author='Shuai Jiang, Naofumi Tomita',

@@ -1,3 +1,39 @@
+# MaskHIT: Transformer-Based Histology Image Analysis
+
+Welcome to the MaskHIT repository, the official implementation of the study:
+
+**Masked Pre-Training of Transformers for Histology Image Analysis**  
+[Arxiv](https://arxiv.org/abs/2304.07434)  
+Jiang S, Hondelink L, Suriawinata AA, Hassanpour S.  
+*arXiv preprint arXiv:2304.07434. 2023 Apr 14.*
+
+
+## Updates and Improvements
+
+### Key Updates:
+- **Config System**: We have adapted a new configuration system to streamline the setup of experiments, making it more flexible and user-friendly.
+- **Preprocessing Pipeline**: The preprocessing steps are now integrated with the [SlidePreprocessing toolkit](https://github.com/BMIRDS/SlidePreprocessing). This integration ensures a more efficient and standardized preprocessing workflow for histology images.
+
+### TO-DO
+- Include doc how to use new config system: configs/configs_default.yaml
+- Explain each parameters
+- Clarify: train.py vs cross_validation.py
+
+### Future Refactoring
+- Decouple data preparation and actual training sequence in train.py
+- train_opts params vs config file, confusing where to set.
+- train_opts lacks enough documentation, making each parameter mystery. (This is partially why we should avoid large opts.)
+- redundancy in meta-level info. should be able to read necessary info from Prep config without repeating in PLP config/opts.
+- dataset variable column name inconsistency (id_patient, case_id, id_slide etc).
+- loss function implementation
+- should decouple train.py and dataset generation
+- readme update.
+
+
+**Note**: The information below may require updates to reflect the latest advancements and changes.
+
+---
+
 # Prepare the datasets to be used for this repo: see WSI_PreProcess
 The following items should be presented in this repo:
 * data folder: contains the preprocessed feature vectors
