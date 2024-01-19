@@ -1,12 +1,12 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 # $ python setup.py develop
 
 setup(
-   name='popp_slide',
+   name='maskhit',
    version='1.0',
-   description='Whole Slide Image based Patient Level Prediction',
-   author='Shuai Jiang, Diana Song, Naofumi Tomita',
-   packages=['data', 'model', 'options', 'utils'],  #same as name
+   description='MaskHIT',
+   author='Shuai Jiang, Naofumi Tomita',
+   packages=find_packages()
    # install_requires=[], #external packages as dependencies
 )

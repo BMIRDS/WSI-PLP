@@ -116,3 +116,4 @@ sftp*.json
 *test*
 *tmp*
 *.html
+copy_files.sh

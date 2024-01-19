@@ -1,0 +1,81 @@
+# NOTE: To override any values in this file, please create config_user.yaml 
+# (or any YAML file name of you like).
+# In config_user.yaml, only define the variables you wish to update. 
+# Unmentioned variables will use the default values specified here.
+# Please avoid directly modifying values in this file.
+#
+# Documentation Tags:
+#  (default): variables can be left with their default values
+#  (custom): more likely to need modification for each user
+#---------------------------------------------------
+
+
+dataset:
+  ## Dataset configuration
+
+  # Path to the folder containing meta info about svs data
+  # Example: ../../../SlidePreprocessing/for_vit/meta/IBD_PROJECT/svs_meta.pickle
+  meta_svs: !!str <SET_YOUR_OWN_VALUE>
+
+  # Path to the folder containing meta info about the dataset
+  # Example: ../../../SlidePreprocessing/for_vit/meta/ibd_project_meta.pickle
+  meta_all: !!str <SET_YOUR_OWN_VALUE>
+
+  # Outcome our model is trying to predict
+  # Example: "Dx (U=UC, C=Cr, I=Ind)"
+  outcome: !!str <SET_YOUR_OWN_VALUE>
+
+  # classification type
+  outcome_type: !!str classification
+  
+  # the name of the study
+  study: !!str <SET_YOUR_OWN_VALUE>
+
+  # type of disease; whether it is cancer or not
+  is_cancer: !!bool False
+
+  # title of project/disease name
+  disease: !!str <SET_YOUR_OWN_VALUE>
+
+  # names of classes in your dataset
+  classes: !!str <SET_YOUR_OWN_VALUE>
+
+  # number of folds experiment uses
+  num_folds: !!int 5
+
+patch:
+  ## Patch configuration
+
+  # number of patches from each region. If 0 will sample all patches
+  num_patches: !!int 0
+
+  # magnification level at which patches were extracted at
+  magnification: !!int 10
+
+  # intensity of weight decay
+  wd: !!float 0.01
+
+model:
+  ## Model configuration
+
+  # used for uneven class distribution
+  weighted_loss: !!bool False
+  
+  # learning rate
+  lr: !!float 1e-5
+
+  # Dropout rate
+  dropout: !!float 0.2
+
+  # Batch size for processing slide patches
+  batch_size: !!int 16
+  
+  # determines whether old logs should stay
+  override_logs: !!bool True
+
+  # number of svs sampled in sample-patient mode
+  regions_per_svs: !!int 64
+  
+  # TBD
+  sample_patient: !!bool True
+
