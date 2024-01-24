@@ -301,7 +301,7 @@ class TrainOptions(BaseOptions):
         # experiment optional options
         self.parser.add_argument('--checkpoints-folder',
                                  type=str,
-                                 default='checkpoints_new',
+                                 default='checkpoints',
                                  help='path to the checkpoints folder')
         self.parser.add_argument('--log-freq',
                                  type=int,
