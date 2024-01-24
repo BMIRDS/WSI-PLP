@@ -53,6 +53,7 @@ class TrainOptions(BaseOptions):
                                  type=str,
                                  default='',
                                  help='select cancer subset, if empty then use entire dataset')
+        #TODO: lack of doc. so this 'fold' means 0-indexed test fold ID?
         self.parser.add_argument('--fold',
                                  type=int,
                                  default=0,
@@ -254,10 +255,12 @@ class TrainOptions(BaseOptions):
                                  help='turn off strict mode')
 
         # patch region masking
+        #TODO: Avoid too similar arg names
         self.parser.add_argument('--prob-mask',
                                  type=float,
                                  default=0,
                                  help='mask probability in BERT')
+        #TODO: Need doc for "masked:original:random". What are these?
         self.parser.add_argument('--prop-mask',
                                  type=str,
                                  default='0, 1, 0',

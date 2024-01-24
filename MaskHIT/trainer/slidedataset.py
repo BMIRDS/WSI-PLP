@@ -91,6 +91,8 @@ class SlidesDataset(Dataset):
 
     def _get_patch_meta(self, folder, fname, loc):
         # get all the patches for one wsi
+        #TODO: This path doesn't seem to be well generalized.
+        #Confusing as folder=args.config.disease.
         meta_one = pd.read_pickle(
             f'{self.args.data}/{folder}/{fname}/{self.args.patch_spec}/meta.pickle')
         meta_one['valid'].fillna(0, inplace=True)
