@@ -271,9 +271,15 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
     #TODO: Duct-tape solution for RCCp dataset. Need update.
     ids_to_add = []
     for index, row in meta_split.iterrows():
-        # value_to_split = row['case_number']
-        # split_value = value_to_split.split('.')[0]
-        split_value = row['barcode']
+        if 'case_number' in row:
+            value_to_split = row['case_number']
+            split_value = value_to_split.split('.')[0]
+        elif 'barcode' in row:
+            split_value = row['barcode']
+            print(row)
+        else:
+            raise ValueError("Row does not contain 'case_number' or 'barcode'")
+
         ids_to_add.append(split_value)
     meta_split['id_patient'] = ids_to_add
     # Define the lambda function
@@ -353,7 +359,7 @@ def main():
         model_name = f"{TIMESTR}-{args.fold}"
 
     # if we want to resume previous training
-    if len(config.model.resume):
+    if config.model.resume:
         checkpoint_to_resume = get_resume_checkpoint(config.model.resume,
                                                      config.model.resume_epoch)
         if args.resume_train:

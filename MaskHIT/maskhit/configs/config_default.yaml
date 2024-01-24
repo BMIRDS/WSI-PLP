@@ -100,3 +100,7 @@ model:
   #TODO: ?
   sample_patient: !!bool True
 
+  # Check-point path?
+  resume: null
+
+
