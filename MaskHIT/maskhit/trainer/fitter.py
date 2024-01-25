@@ -17,6 +17,8 @@ import pickle
 import numpy as np
 from utils.config import Config
 from pathlib import Path
+#TODO: Sort imports. Also avoid os.path use
+#TODO: This file is way too long. Should clean up and split the features.
 
 from maskhit.model.models import HybridModel
 from maskhit.trainer.losses import ContrasiveLoss
@@ -429,6 +431,7 @@ class HybridFitter:
                     preds=preds.data.cpu().numpy(),
                     targets=targets.data.cpu().numpy(),
                     outcome_type=self.config.dataset.outcome_type, label_classes = label_classes)
+
             perfs.update(metrics[self.metric], num_samples)
 
             # measure elapsed time
@@ -659,6 +662,7 @@ class HybridFitter:
             self.device = torch.device('cpu')
         self.current_epoch = 1
 
+        #TODO: Better define constant values in __init__()
         metrics = {
             'classification': 'auc',
             'survival': 'c-index',
