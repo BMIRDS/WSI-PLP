@@ -71,14 +71,14 @@ args = opt.parse()
 config = Config(args.default_config_file, args.user_config_file)
 # string holding command-line arguments joined with spaces
 args.all_arguments = ' '.join(sys.argv[1:])
-#TODO: this var not used
+#TODO: this variable above is not used. Better remove or used somewhere?
 
 assert not args.sample_all, "the argument --sample-all is deprecated, use --num-patches=0 instead"
     
 # print(f"args.cancer: {args.cancer}")
 if args.cancer == '.':
     args.cancer = ""
-#TODO: Why we need to care this case?
+#TODO: Not clear why it checks if it's a cancer data? What's the real intent?
 
 # setting weight decay values
 if hasattr(config.model, 'wd_attn') and hasattr(config.model, 'wd_fuse') and hasattr(config.model, 'wd_loss'):
@@ -123,15 +123,17 @@ else:
 # Checking to see if region-size, region-length, and grid-size are valid
 # These parameters control the subdivision of patches within a given region
 if args.region_length is not None and args.region_length > 0:
-    assert_message = "grid size is measured in patches and need to be a positive number no larger than the region size / patch size"
-    #TODO: Use multi-line comment.
+    assert_message = (
+    "Grid size is measured in patches and needs to be a positive number. "
+    "It should not exceed the region size divided by the patch size."
+    )
     assert args.grid_size <= args.region_length and args.grid_size > 0, assert_message
 
 args.prop_mask = [int(x) for x in args.prop_mask.split(',')]
 args.prop_mask = [x / sum(args.prop_mask) for x in args.prop_mask]
 
 # initializing sampling and outcome arguments
-#TODO: lack of docs. So I guess this is a variable name in string for id column?
+#TODO: lack of docs. So guess is that this is a variable name in string for an id column?
 if args.sample_svs:
     args.id_var = 'id_svs_num'
 else:
@@ -144,7 +146,7 @@ else:
 
 args.patch_spec = f"mag_{float(config.patch.magnification):.1f}-size_{args.patch_size}"
 
-#TODO: This should be in a function.
+#TODO: We should write a function to handle data partitioning.
 args.mode_ops = {'train': {}, 'val': {}, 'predict': {}}
 
 # initializing num_patches argument for train mode
@@ -232,11 +234,12 @@ def get_resume_checkpoint(checkpoints_name, epoch_to_resume):
     files = glob.glob(
         os.path.join(args.checkpoints_folder, checkpoints_name, "*.pt"))
 
-    #TODO: Avoid list comprehension
-    checkpoint_to_resume = [
-        fname for fname in files
-        if get_checkpoint_epoch(fname) == epoch_to_resume
-    ][0]
+    checkpoint_to_resume = None
+    for fname in files:
+        if get_checkpoint_epoch(fname) == epoch_to_resume:
+            checkpoint_to_resume = fname
+            break
+
     
     return checkpoint_to_resume
 
@@ -268,7 +271,8 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
 
     """
 
-    #TODO: Duct-tape solution for RCCp dataset. Need update.
+    #TODO: Temp Duct-tape solution for existing datasets. Need update.
+    #Ideally, the target column name should be parameterized in a config file.
     ids_to_add = []
     for index, row in meta_split.iterrows():
         if 'case_number' in row:
@@ -276,29 +280,24 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
             split_value = value_to_split.split('.')[0]
         elif 'barcode' in row:
             split_value = row['barcode']
-            print(row)
+            #TODO: Temp Duct-tape solution: Formatting the ID
+            split_value = "-".join(split_value.split('-')[:3])
         else:
             raise ValueError("Row does not contain 'case_number' or 'barcode'")
 
         ids_to_add.append(split_value)
+    
     meta_split['id_patient'] = ids_to_add
-    # Define the lambda function
-    shorten_id = lambda x: x.split('-')[0] + '-' + x.split('-')[1] + '-' + x.split('-')[2]
-    # Apply the lambda function to the id_patient column
-    meta_file['id_patient'] = meta_file['id_patient'].apply(shorten_id)
-
-
 
     #TODO: This whole block should be in another script to be run before train.py
     if 'id_patient' not in meta_split.columns:
         patient_ids = []
         # iterating over the meta_split dataframe
         for index, row in meta_split.iterrows():
-            #TODO: Debug: This function is basically repeating what we have done in MaskHIT_Prep
-            print(row)
+            #TODO: Debug: This code is basically repeating what we have done in MaskHIT_Prep
+
             # obtaining the paths of the files to the related slide
-            
-            #Debug: temp fix
+            #TODO: Debug: temp fix but need to check with other datasets to see if literal_eval is required and why.
             #file_names = ast.literal_eval(row['Path'])
             file_names = str(row['path'])
 
@@ -321,8 +320,7 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
                                   on='id_patient',
                                   how='inner')
     #TODO: Need check consistency after merge.
-    assert meta_split.shape[0] > 0, "Merge operation"
-
+    assert meta_split.shape[0] > 0, "Merge operation failed."
     
     meta_split['id_patient_num'] = meta_split.id_patient.astype(
         'category').cat.codes
@@ -345,9 +343,6 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
 
 
 def main():
-
-    #TODO: Debug
-    print()
 
     if len(args.timestr):
         TIMESTR = args.timestr
@@ -397,7 +392,7 @@ def main():
 
     if config.dataset.meta_all is not None:
         meta_all = pd.read_pickle(config.dataset.meta_all)
-        #Debug:
+        #Debug: Checking input data
         print("Debug: meta_all:\n", meta_all.head(2))
 
         #TODO: mode=extract is not expected in the train_options. Need doc.
@@ -405,7 +400,7 @@ def main():
             meta_train = meta_val = meta_all
         elif 'fold' in meta_all.columns:
             if meta_all.fold.nunique() == 5:
-                #TODO: Why expecting to have 5 folds? Generalize.
+                #TODO: Why expecting to have 5 folds? What about other cases? Need generalize.
                 val_fold = (args.fold + 1) % 5
                 test_fold = args.fold
 
@@ -438,7 +433,7 @@ def main():
         meta_val = pd.read_pickle(args.meta_val)
 
     # select cancer subset
-    #TODO: lack of docs. cancer='' means use all. I think right term would be 'filtering'.
+    #TODO: lack of docs. Here, cancer='' means use all data. A better term would be 'filtering'.
     if args.cancer == '':
         pass
     else:
@@ -447,7 +442,7 @@ def main():
         meta_val = meta_val.loc[meta_val.cancer == args.cancer]
 
 
-    #TODO: Not sure why we need this.
+    #TODO: Not sure why we do this. Should clarify variables and their intent.
     if config.dataset.is_cancer:
         meta_svs['folder'] = meta_svs['cancer']
     else:

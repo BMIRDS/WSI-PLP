@@ -2,7 +2,16 @@ import pandas as pd
 import numpy as np
 import torch
 from lifelines.utils import concordance_index
-from sklearn.metrics import roc_auc_score, f1_score, mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import (
+    roc_auc_score, 
+    f1_score, 
+    mean_absolute_error, 
+    mean_squared_error, 
+    r2_score, 
+    confusion_matrix, 
+    roc_curve, 
+    auc
+)
 from scipy.special import softmax
 import seaborn as sns
 import matplotlib.pyplot as plt
