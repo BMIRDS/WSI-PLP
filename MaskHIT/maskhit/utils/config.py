@@ -82,9 +82,9 @@ class Config():
                        user_config_file: str = None):
         if not default_config_file:
             return
-        print(f"[INFO] Loading config files:")
-        print(f"[INFO]    Default config: {default_config_file}")
-        print(f"[INFO]    User config: {user_config_file}")
+        # print(f"[INFO] Loading config files:")
+        # print(f"[INFO]    Default config: {default_config_file}")
+        # print(f"[INFO]    User config: {user_config_file}")
 
         with open(default_config_file) as f:
             default_config = yaml.safe_load(f)

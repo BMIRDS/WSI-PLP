@@ -31,16 +31,17 @@ opt.parser.add_argument(
 
 args = opt.parse()
 
+print(f"[INFO] Running cross_validation.py")
+print(f"[INFO] Loading config files:")
+print(f"[INFO]    Default config: {args.default_config_file}")
+print(f"[INFO]    User config: {args.user_config_file}")
 config_file = args.user_config_file
 config_file_default = args.default_config_file
-folds = [int(i) for i in args.folds.split(',')] if args.folds else list(range(config.dataset.num_folds))
-print(f"Testing on folds: {list(folds)}")
 
 # args_config = default_options()
-print(f"config_file: {config_file}")
 config = Config(config_file_default, config_file)
 folds = [int(i) for i in args.folds.split(',')] if args.folds else list(range(config.dataset.num_folds))
-print(f"Testing on folds: {list(folds)}")
+print(f"[INFO] Conducting 5 fold Cross Validation on folds: {list(folds)}")
 study = config.dataset.study
 timestr = config.dataset.timestr_model
 

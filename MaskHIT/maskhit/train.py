@@ -270,42 +270,42 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
         - outcome: patient outcome variable, encoded for classification models e.g. 0, 1, 2 for three classes
 
     """
-
-    #TODO: Temp Duct-tape solution for existing datasets. Need update.
-    #Ideally, the target column name should be parameterized in a config file.
-    ids_to_add = []
-    for index, row in meta_split.iterrows():
-        if 'case_number' in row:
-            value_to_split = row['case_number']
-            split_value = value_to_split.split('.')[0]
-        elif 'barcode' in row:
-            split_value = row['barcode']
-            #TODO: Temp Duct-tape solution: Formatting the ID
-            split_value = "-".join(split_value.split('-')[:3])
-        else:
-            raise ValueError("Row does not contain 'case_number' or 'barcode'")
-
-        ids_to_add.append(split_value)
-    
-    meta_split['id_patient'] = ids_to_add
-
-    #TODO: This whole block should be in another script to be run before train.py
-    if 'id_patient' not in meta_split.columns:
-        patient_ids = []
-        # iterating over the meta_split dataframe
+    if config.dataset.study == "ibd_project":
+        #TODO: Temp Duct-tape solution for existing datasets. Need update.
+        #Ideally, the target column name should be parameterized in a config file.
+        ids_to_add = []
         for index, row in meta_split.iterrows():
-            #TODO: Debug: This code is basically repeating what we have done in MaskHIT_Prep
+            if 'case_number' in row:
+                value_to_split = row['case_number']
+                split_value = value_to_split.split('.')[0]
+            elif 'barcode' in row:
+                split_value = row['barcode']
+                #TODO: Temp Duct-tape solution: Formatting the ID
+                split_value = "-".join(split_value.split('-')[:3])
+            else:
+                raise ValueError("Row does not contain 'case_number' or 'barcode'")
 
-            # obtaining the paths of the files to the related slide
-            #TODO: Debug: temp fix but need to check with other datasets to see if literal_eval is required and why.
-            #file_names = ast.literal_eval(row['Path'])
-            file_names = str(row['path'])
+            ids_to_add.append(split_value)
+    
+        meta_split['id_patient'] = ids_to_add
 
-            patient_id = file_names[0].split('/')[5].split(' ')[0]
-            patient_ids.append(patient_id) # adding patient id to the list
-        meta_split['id_patient'] = patient_ids # adding column to the meta_split dataframe
-        # formatting rows in meta_file of the id patients so they match that of meta_split df
-        meta_file['id_patient'] = meta_file['id_patient'].apply(lambda x: pd.Series(x.split(' ')[0]))
+        # TODO: This whole block should be in another script to be run before train.py
+        if 'id_patient' not in meta_split.columns:
+            patient_ids = []
+            # iterating over the meta_split dataframe
+            for index, row in meta_split.iterrows():
+                #TODO: Debug: This code is basically repeating what we have done in MaskHIT_Prep
+
+                # obtaining the paths of the files to the related slide
+                #TODO: Debug: temp fix but need to check with other datasets to see if literal_eval is required and why.
+                #file_names = ast.literal_eval(row['Path'])
+                file_names = str(row['path'])
+
+                patient_id = file_names[0].split('/')[5].split(' ')[0]
+                patient_ids.append(patient_id) # adding patient id to the list
+            meta_split['id_patient'] = patient_ids # adding column to the meta_split dataframe
+            # formatting rows in meta_file of the id patients so they match that of meta_split df
+            meta_file['id_patient'] = meta_file['id_patient'].apply(lambda x: pd.Series(x.split(' ')[0]))
 
 
     vars_to_keep = ['id_patient']
@@ -343,6 +343,8 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
 
 
 def main():
+    
+    print(f"[INFO] Running train.py")
 
     if len(args.timestr):
         TIMESTR = args.timestr
@@ -393,7 +395,7 @@ def main():
     if config.dataset.meta_all is not None:
         meta_all = pd.read_pickle(config.dataset.meta_all)
         #Debug: Checking input data
-        print("Debug: meta_all:\n", meta_all.head(2))
+        # print("Debug: meta_all:\n", meta_all.head(2))
 
         #TODO: mode=extract is not expected in the train_options. Need doc.
         if args.mode == 'extract':
@@ -466,14 +468,15 @@ def main():
                             meta_file=meta_svs, 
                             vars_to_include=vars_to_include)
 
-    print("df_test")
-    print(df_test)
+    print(f"[INFO] Train folds are : {train_folds}")
+    print(f"[INFO] Validation fold is: {val_fold}")
+    print(f"[INFO] Fold {test_fold} saved for testing")
     
     if config.dataset.outcome_type == 'classification':
         num_classes = len(df_train[config.dataset.outcome].unique().tolist())
+        
     else:
         num_classes = 1
-    print(f"num_classes: {num_classes}")
     
     if config.model.weighted_loss:
         weight = df_train.shape[0] / df_train[
@@ -498,8 +501,6 @@ def main():
 
 
     data_dict = {"train": df_train, "val": df_test}
-
-    df_test.to_csv('fold0.csv')
 
     # Simply call main_worker function
     # print(f"Validation Folds: {df_test.fold.unique()}")
