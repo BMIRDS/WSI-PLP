@@ -233,7 +233,6 @@ def get_resume_checkpoint(checkpoints_name, epoch_to_resume):
     """
     files = glob.glob(
         os.path.join(args.checkpoints_folder, checkpoints_name, "*.pt"))
-
     checkpoint_to_resume = None
     for fname in files:
         if get_checkpoint_epoch(fname) == epoch_to_resume:
@@ -356,7 +355,14 @@ def main():
         model_name = f"{TIMESTR}-{args.fold}"
 
     # if we want to resume previous training
-    if config.model.resume:
+    if args.resume:
+        checkpoint_to_resume = get_resume_checkpoint(args.resume,
+                                                     config.model.resume_epoch)
+        if args.resume_train:
+            # use the model name
+            model_name = config.model.resume
+            TIMESTR = model_name.split('-')[0]
+    elif config.model.resume:
         checkpoint_to_resume = get_resume_checkpoint(config.model.resume,
                                                      config.model.resume_epoch)
         if args.resume_train:

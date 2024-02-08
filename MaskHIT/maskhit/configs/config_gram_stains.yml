@@ -16,7 +16,7 @@ patch:
 
 model:
   weighted_loss: !!bool True
-  resume: 
+  resume: !!str 
   resume_epoch: !!str BEST
 
   regions_per_svs: !!int 64
@@ -37,6 +37,6 @@ model:
 
   accumulation_steps: !!int 1
   dropout: !!float 0.3
-  batch_size: !!int 4
+  batch_size: !!int 8
   override_logs: !!bool True
   sample_patient: !!bool True
