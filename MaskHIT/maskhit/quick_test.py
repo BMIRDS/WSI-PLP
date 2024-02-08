@@ -44,11 +44,11 @@ for i, log_file in enumerate(files):
     pattern = r'--timestr=[^\s]+'
     org_cmd = re.sub(pattern, '', org_cmd)
 
-    timestr_new += '-test'
     new_cmd = ' '.join([
         'python train.py', org_cmd,
-        f' --mode=test --test-type=test --resume-epoch=BEST --timestr={timestr_new}'
+        f' --resume={ckp} --mode=test --test-type=test --timestr={timestr_new}'
     ])
 
     print(f"executing following new_cmd: {new_cmd}")
     os.system(new_cmd)
+
