@@ -66,8 +66,8 @@ def batch_train():
 
 
 if __name__ == '__main__':
-    #return_code = batch_train()
-    if False: #return_code:
+    return_code = batch_train()
+    if return_code:
         pass
     else:
         # model testing
