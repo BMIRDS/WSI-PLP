@@ -38,7 +38,7 @@ config_file_default = args.default_config_file
 # args_config = default_options()
 config = Config(config_file_default, config_file)
 folds = [int(i) for i in args.folds.split(',')] if args.folds else list(range(config.dataset.num_folds))
-print(f"[INFO] Conducting 5 fold Cross Validation on folds: {list(folds)}")
+print(f"[INFO] Conducting Cross Validation on folds: {list(folds)}")
 study = config.dataset.study
 timestr = config.dataset.timestr_model
 
