@@ -676,6 +676,19 @@ class HybridFitter:
         self.es = EarlyStopping(patience=self.args.patience, mode='max')
 
         self.get_logger()
+        
+        if self.config.dataset.outcome_type == 'classification':
+            self.writer['meta'].info(f"Running classification between classes: {self.config.dataset.classes}")
+        self.writer['meta'].info(f"Number of classes: {self.num_classes}")
+        self.writer['meta'].info('Training patients:')
+        self.writer['meta'].info('\t'+ data_dict['train'][['id_patient']].to_string()) 
+        
+        if procedure == 'train':
+            self.writer['meta'].info('Validation patients:')
+            self.writer['meta'].info('\t'+ data_dict['val'][['id_patient']].to_string()) 
+        elif procedure == 'test':
+            self.writer['meta'].info('Testing patients:')
+            self.writer['meta'].info('\t'+ data_dict['val'][['id_patient']].to_string()) 
 
         # creating an instance of the model
         model = HybridModel(in_dim=self.args.num_features,

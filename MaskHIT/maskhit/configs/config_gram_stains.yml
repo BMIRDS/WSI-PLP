@@ -1,0 +1,42 @@
+dataset:
+  meta_svs: !!str /pool2/users/jackm/Dartmouth_experiments/SlidePreprocessing/for_vit/meta/dartmouth_svs-2.pickle
+  meta_all: !!str /pool2/users/jackm/Dartmouth_experiments/SlidePreprocessing/for_vit/meta/dartmouth_meta-2.pickle
+
+  timestr_model: !!str 2024_2_6-vit
+  outcome: !!str morphology
+  outcome_type: !!str classification
+  study: !!str dartmouth
+  is_cancer: !!bool False
+  disease: !!str dartmouth
+  classes: !!str GN, GP
+
+patch:
+  num_patches: !!int 400
+  magnification: !!float 20.0
+
+model:
+  weighted_loss: !!bool True
+  resume: !!str 
+  resume_epoch: !!str BEST
+
+  regions_per_svs: !!int 64
+  
+  # Weight Decays
+  wd_attn: !!float 1e-3
+  wd_fuse: !!float 1e-2
+  wd_loss: !!float 1e-2
+  wd_pred: !!float 1e-2
+  
+  # Learning Rates
+  lr_attn: !!float 1e-3 
+  lr_fuse: !!float 1e-3
+  lr_loss: !!float 1e-3
+  lr_pred: !!float 1e-3
+
+  performance_measure: !!str f1
+
+  accumulation_steps: !!int 1
+  dropout: !!float 0.3
+  batch_size: !!int 8
+  override_logs: !!bool True
+  sample_patient: !!bool True

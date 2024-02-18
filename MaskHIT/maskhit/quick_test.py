@@ -15,10 +15,10 @@ import re
 
 study = sys.argv[1]
 timestr = sys.argv[2]
-timestr_new = sys.argv[3]
+timestr_test = sys.argv[3]
 
 # the first three arguments passed from `cross_validation.py`
-print(f"{study}, {timestr}, {timestr_new}")
+print(f"{study}, {timestr}, {timestr_test}")
 
 current_directory = Path(__file__).parent
 os.chdir(current_directory)
@@ -44,11 +44,11 @@ for i, log_file in enumerate(files):
     pattern = r'--timestr=[^\s]+'
     org_cmd = re.sub(pattern, '', org_cmd)
 
-    timestr_new += '-test'
     new_cmd = ' '.join([
         'python train.py', org_cmd,
-        f' --mode=test --test-type=test --resume-epoch=BEST --timestr={timestr_new}'
+        f' --resume={ckp} --mode=test --test-type=test --timestr={timestr_test}'
     ])
 
     print(f"executing following new_cmd: {new_cmd}")
     os.system(new_cmd)
+
