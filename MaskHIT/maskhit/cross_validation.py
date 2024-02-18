@@ -32,9 +32,6 @@ opt.parser.add_argument(
 args = opt.parse()
 
 print(f"[INFO] Running cross_validation.py")
-print(f"[INFO] Loading config files:")
-print(f"[INFO]    Default config: {args.default_config_file}")
-print(f"[INFO]    User config: {args.user_config_file}")
 config_file = args.user_config_file
 config_file_default = args.default_config_file
 
