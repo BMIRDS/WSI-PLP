@@ -12,7 +12,7 @@ class BaseOptions():
 
     def parse(self):
         args = self.parser.parse_args()
-        # print(args)
+        print(args)
         if args.config:
             args = load_config(args)
             return args
