@@ -270,6 +270,8 @@ def prepare_data(meta_split, meta_file, vars_to_include=[]):
 
     """
     if config.dataset.study == "ibd_project":
+        #Moved specific preprocessing conditional to IBD dataset to run only for that study. 
+        #Other datasets check if affected and modify line 272 to add your study to this conditional.
         #TODO: Temp Duct-tape solution for existing datasets. Need update.
         #Ideally, the target column name should be parameterized in a config file.
         ids_to_add = []
